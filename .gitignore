@@ -1,0 +1,13 @@
+.venv/
+.env
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+dist/
+build/
+reports/
+shared/python/dgbit_core/reports/
+node_modules/
+apps/dgbit-ui/node_modules/
+apps/dgbit-ui/dist/
