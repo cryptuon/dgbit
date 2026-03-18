@@ -1,87 +1,235 @@
-# dgbit – Bybit Trading Bot Prototype
+# dgbit – Bybit Trading Bot Framework
 
 ## Overview
-dgbit is an experimental framework for researching and running short-term strategies on Bybit spot markets. The current codebase focuses on downloading high-frequency klines, extracting wavelet-based reversal signals, simulating trades through a lightweight backtester, and optionally streaming data for live execution. This repository is being refactored into a production-ready system; the documentation here captures the present state and the roadmap for the rewrite.
 
-## Key Capabilities (Current Prototype)
-- Fetch high-resolution kline data plus basic momentum features via `pybit` (`shared/python/dgbit_core/data/data_fetcher.py`).
-- Generate trading signals using a Daubechies wavelet heuristic (`shared/python/dgbit_core/models/predictor.py`, `shared/python/dgbit_core/trading/strategy.py`).
-- Perform single-position backtests with HTML reporting (`shared/python/dgbit_core/backtesting/backtester.py`).
-- Stream live klines and trigger trades in real time (experimental, `shared/python/dgbit_core/trading/realtime_trader.py`).
+dgbit is an experimental framework for researching and running short-term strategies on Bybit spot markets. The system provides:
 
-## Architecture at a Glance
+- High-frequency kline data fetching from Bybit
+- Multiple trading strategies (Wavelet Reversal, MA Crossover, RSI, Bollinger Bands)
+- Backtesting simulation with HTML reporting
+- Service bus architecture for scalable execution
+- Vue 3 web interface for monitoring and control
+
+## Key Capabilities
+
+- **Data Fetching**: Fetch high-resolution kline data via `pybit` and `ccxt`
+- **Trading Strategies**: Pluggable strategy system with registry pattern
+- **Backtesting**: In-memory simulation with Plotly HTML reports
+- **Position Management**: Position tracking with entry/exit logic
+- **Service Bus**: NNG-based messaging for inter-process communication
+
+## Architecture
+
 ```
-┌────────────┐    ┌────────────────┐    ┌─────────────────┐    ┌───────────────────┐
-│ Bybit APIs │ -> │ Data Fetchers  │ -> │ Feature / Model  │ -> │ Strategy / Trading│
-└────────────┘    │ (HTTP/WebSock) │    │ (Wavelet logic)  │    │ (Backtest/Live)   │
-                  └────────────────┘    └─────────────────┘    └───────────────────┘
-                                               │
-                                               ▼
-                                        Reports & Metrics
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              dgbit Platform                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                        Frontend (Vue 3)                           │   │
+│  │  - Dashboard    - Charts & Trading    - Portfolio                 │   │
+│  │  - Strategies   - System                                             │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                   │ HTTP / WebSocket                     │
+│                                   ▼                                      │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                     API Service (FastAPI)                         │   │
+│  │  - REST endpoints    - Request validation    - Job management     │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│           │                     │                     │                  │
+│           │ NNG (IPC)           │ NNG (IPC)           │ NNG (IPC)        │
+│           ▼                     ▼                     ▼                  │
+│  ┌────────────────┐   ┌─────────────────┐   ┌─────────────────────┐    │
+│  │  Data Service  │   │  Backtest Worker│   │  Strategy Service   │    │
+│  │  (Market Data) │   │  (Backtesting)  │   │  (Signal Generation)│    │
+│  └────────────────┘   └─────────────────┘   └─────────────────────┘    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
-The refactor will formalize these layers into reusable services with shared configuration, logging, and tests. See `docs/ASSESSMENT.md` and `docs/ROADMAP.md` for details.
+
+## Project Structure
+
+```
+dgbit/
+├── dgbit-api/                         # FastAPI backend service
+│   ├── src/dgbit_api/                # Main API application
+│   │   ├── api/                      # API routes
+│   │   ├── core/                     # Configuration, logging
+│   │   ├── db/                       # Database models
+│   │   ├── infra/                    # Infrastructure (messaging)
+│   │   ├── services/                 # Business services
+│   │   └── workers/                  # Background workers
+│   ├── src/dgbit_services/           # Service bus (NNG)
+│   ├── src/dgbit_data/               # Data layer (adapters)
+│   ├── src/dgbit_cli/                # CLI tools
+│   ├── shared/python/dgbit_core/     # Trading logic
+│   │   ├── backtesting/              # Backtesting engine
+│   │   ├── trading/                  # Strategy, position, execution
+│   │   ├── data/                     # Data fetching
+│   │   └── models/                   # Predictor models
+│   └── tests/                        # API tests
+│
+├── dgbit-ui/                         # Vue 3 frontend
+│   ├── src/
+│   │   ├── views/                    # Page components
+│   │   ├── stores/                   # Pinia stores
+│   │   ├── services/                 # API client
+│   │   └── router/                   # Vue Router
+│   └── ...
+│
+└── docs/                             # Documentation
+```
 
 ## Getting Started
-### Prerequisites
-- Python 3.11
-- Poetry 1.6+
-- Bybit API key/secret with market-data permissions (live or testnet)
 
-### Installation
+### Prerequisites
+
+- Python 3.11+
+- Poetry 1.6+
+- Node.js 18+ (for frontend)
+- Bybit API key/secret (for live trading)
+
+### Backend Setup
+
 ```bash
+cd dgbit-api
 poetry install
 ```
 
-### Environment Configuration
-Create a `.env` file (not committed) with your credentials and runtime toggles:
+### Frontend Setup
+
+```bash
+cd dgbit-ui
+npm install
 ```
+
+### Environment Configuration
+
+Create a `.env` file in `dgbit-api/` with your credentials:
+
+```env
 BYBIT_API_KEY=...
 BYBIT_API_SECRET=...
 BYBIT_TESTNET=false
 ```
-Additional configuration will migrate into a typed settings module during the refactor.
 
-### Run a Sample Backtest
+### Running the Platform
+
+**API Service:**
+
 ```bash
-poetry run python -m dgbit_core.main
-```
-The script fetches volatile spot pairs, downloads historical klines, runs the `Backtester`, prints metrics, and writes Plotly HTML reports into `shared/python/dgbit_core/reports/`.
-
-### Platform Apps
-- **API service:** `cd apps/dgbit-api && poetry install && poetry run uvicorn dgbit_api.main:app --reload`
-- **Background worker (prototype):** `poetry run python -m dgbit_api.workers.backtest_runner`
-- **UI shell:** `cd apps/dgbit-ui && npm install && npm run dev` (Vite dev server proxied to the API)
-
-### Experimental Real-Time Trading
-`shared/python/dgbit_core/trading/realtime_trader.py` demonstrates how to stream minute-level klines and react to signals. It currently manages a single position in memory and lacks error handling or risk controls—use for exploration only.
-
-## Project Structure
-```
-apps/
-├── dgbit-api/           # FastAPI service + nng worker stubs
-└── dgbit-ui/            # Vue 3 + Tailwind UI shell
-shared/
-└── python/
-    └── dgbit_core/      # Trading logic (data, models, strategies, backtesting)
-docs/
-├── ASSESSMENT.md        # Technical assessment of the current codebase
-├── ROADMAP.md           # Phased plan for the full refactor
-├── ARCHITECTURE.md      # Current vs target architecture and data flows
-├── DEVELOPMENT_GUIDE.md # Environment setup and contribution workflow
-├── OPERATIONS.md        # Runbooks for research, paper, and production modes
-└── PLATFORM_PLAN.md     # Structure for dgbit-api (FastAPI) and dgbit-ui (Vue)
+cd dgbit-api
+poetry run uvicorn dgbit_api.main:app --reload
 ```
 
-## Refactor Roadmap Highlights
-1. **Foundations:** Define layered architecture, centralized configuration, structured logging, and CI safety nets.
-2. **Data & Features:** Encapsulate exchange adapters, caching, validation, and deterministic feature engineering reused across modes.
-3. **Strategy & Modelling:** Support pluggable predictors with experiment harnesses and dependency injection.
-4. **Simulation & Execution:** Build a shared order/portfolio engine for both backtests and live trading, including risk controls and reporting.
-5. **Operations:** Containerize, monitor, and document operational processes before promoting to production.
+**Frontend Development:**
 
-Refer to `docs/ROADMAP.md` for the detailed sequencing plus success criteria, and to `docs/ASSESSMENT.md` for the gap analysis informing the plan.
+```bash
+cd dgbit-ui
+npm run dev
+```
 
-## Contributing / Next Steps
-- Follow the roadmap documents when planning tasks; open issues should reference the relevant phase and deliverable.
-- Add unit tests and logging as you touch modules—quality gates are critical before shipping a live trading system.
-- Track outstanding questions (e.g., supported exchanges, deployment targets) in `docs/ROADMAP.md` so execution risks stay visible.
+**Background Workers:**
+
+```bash
+cd dgbit-api
+poetry run python -m dgbit_api.workers.backtest_runner
+```
+
+### Running Tests
+
+```bash
+cd dgbit-api
+poetry run pytest
+```
+
+## API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Health check |
+| `POST /backtests` | Create a backtest job |
+| `GET /backtests/{id}` | Get backtest results |
+| `GET /jobs` | List all jobs |
+| `GET /data/klines` | Get kline data |
+| `GET /data/symbols` | List trading pairs |
+| `GET /strategies` | List available strategies |
+| `POST /execution/orders` | Place an order |
+| `GET /execution/positions` | Get open positions |
+
+## Strategies
+
+### Built-in Strategies
+
+1. **Wavelet Reversal** - Daubechies wavelet-based reversal signals
+2. **MA Crossover** - Moving average crossover strategy
+3. **RSI** - Relative Strength Index strategy
+4. **Bollinger Bands** - Bollinger Bands breakout strategy
+
+### Creating Custom Strategies
+
+```python
+from dgbit_core.trading.strategy import BaseStrategy, StrategyMetadata, SignalType, strategy_registry
+
+class MyStrategy(BaseStrategy):
+    metadata = StrategyMetadata(
+        name="my_strategy",
+        description="My custom strategy",
+        author="You",
+        version="0.1.0",
+        signal_type=SignalType.MOMENTUM,
+        parameters={...},
+    )
+
+    def generate_signal(self, data):
+        # Your logic here
+        return signal_value
+
+strategy_registry.register(MyStrategy)
+```
+
+## Backtesting
+
+```python
+from dgbit_core.backtesting import Backtester, BacktestConfig
+from dgbit_core.trading import create_strategy
+
+# Create strategy
+strategy = create_strategy("wavelet_reversal", min_signal_threshold=0.75)
+
+# Configure backtest
+config = BacktestConfig(
+    initial_capital=10000.0,
+    transaction_fee=0.001,
+)
+
+# Run backtest
+backtester = Backtester(config=config)
+backtester.strategy = strategy
+result = backtester.run(market_data)
+
+# Results include metrics and HTML report
+print(f"Win Rate: {result.metrics['win_rate']:.2%}")
+```
+
+## Service Bus
+
+The platform uses NNG (nanomsg) for inter-process communication:
+
+| Socket | Pattern | Purpose |
+|--------|---------|---------|
+| `ipc:///tmp/dgbit_cmd.ipc` | REQ/REP | Command bus |
+| `ipc:///tmp/dgbit_evt.ipc` | PUB/SUB | Event bus |
+| `ipc:///tmp/dgbit_queue.ipc` | PUSH/PULL | Job queue |
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md) - System architecture overview
+- [Strategy Architecture](docs/STRATEGY_ARCHITECTURE.md) - Extensible strategy system
+- [NNG Architecture](docs/NNG_ARCHITECTURE.md) - Service bus design
+- [Roadmap](docs/ROADMAP.md) - Development roadmap
+- [Development Guide](docs/DEVELOPMENT_GUIDE.md) - Setup and contribution guide
+
+## License
+
+MIT

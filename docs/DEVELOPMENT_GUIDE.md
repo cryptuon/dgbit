@@ -24,9 +24,10 @@ cp .env.example .env  # create if missing, set BYBIT_* vars
 | Explore REPL | `poetry run python` |
 
 ### Multi-app Workflow
-- **API service:** `cd apps/dgbit-api && poetry install && poetry run uvicorn dgbit_api.main:app --reload`
-- **Workers:** `poetry run python -m dgbit_api.workers.backtest_runner`
-- **UI:** `cd apps/dgbit-ui && npm install && npm run dev`
+- **API service:** `cd dgbit-api && poetry install && poetry run uvicorn dgbit_api.main:app --reload`
+- **Service Bus:** `cd dgbit-api && poetry run python -m dgbit_services.orchestrator`
+- **Workers:** `cd dgbit-api && poetry run python -m dgbit_api.workers.backtest_runner`
+- **UI:** `cd dgbit-ui && npm install && npm run dev`
 
 Add `make` targets later (e.g., `make fmt`, `make test`, `make backtest`) for convenience.
 
@@ -37,13 +38,13 @@ Add `make` targets later (e.g., `make fmt`, `make test`, `make backtest`) for co
 4. Run formatters/tests locally; fix lint warnings before pushing.
 5. Open pull requests referencing roadmap phases (e.g., `Phase 2 – Data Layer: caching`).
 
-## Testing Strategy (Future State)
+## Testing Strategy
 - **Unit tests:** Cover adapters (mocked HTTP/WebSocket), feature builders, predictors, and strategy decision logic.
 - **Integration tests:** Replay canned datasets through the shared execution engine to assert parity between sim and live logic.
 - **End-to-end smoke:** Run a short backtest against stored klines to validate packaging/build pipelines.
 - **Static analysis:** `mypy` for typing, `ruff`/`flake8` for style, `bandit` for security as needed.
 
-Currently the repo lacks tests—start by scaffolding fixtures in `tests/` with sample data frames (CSV/Parquet) to freeze behavior for the refactor.
+Tests are located in `dgbit-api/tests/`. Run with `poetry run pytest`.
 
 ## Coding Guidelines
 - Prefer dependency injection over singletons; pass collaborators (data providers, predictors) to constructors.
@@ -58,7 +59,7 @@ Currently the repo lacks tests—start by scaffolding fixtures in `tests/` with 
 - Keep documents concise; link to detailed references rather than duplicating content.
 
 ## Data Handling
-- Store temporary or generated artifacts under `data/` or `reports/` outside the `shared/python/dgbit_core` package.
+- Store temporary or generated artifacts under `data/` or `reports/` outside the `dgbit-api/shared/python/dgbit_core` package.
 - Sanitize and compress large datasets before committing; prefer scripts to regenerate them.
 - For third-party data, document provenance, licensing, and update cadence.
 

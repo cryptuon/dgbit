@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-900 text-gray-100;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
+
+/* Card styles */
+.card {
+  @apply bg-gray-800 rounded-lg border border-gray-700 p-4;
+}
+
+.card-header {
+  @apply text-lg font-semibold mb-4 border-b border-gray-700 pb-2;
+}
+
+/* Button styles */
+.btn {
+  @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+}
+
+.btn-primary {
+  @apply bg-dgbit-600 hover:bg-dgbit-700 text-white;
+}
+
+.btn-secondary {
+  @apply bg-gray-700 hover:bg-gray-600 text-white;
+}
+
+.btn-success {
+  @apply bg-green-600 hover:bg-green-700 text-white;
+}
+
+.btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white;
+}
+
+/* Input styles */
+.input {
+  @apply bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-dgbit-500;
+}
+
+/* Status indicators */
+.status-online {
+  @apply text-green-400;
+}
+
+.status-offline {
+  @apply text-red-400;
+}
+
+.status-warning {
+  @apply text-yellow-400;
+}
+
+/* Table styles */
+.table {
+  @apply w-full text-sm text-left;
+}
+
+.table th {
+  @apply px-4 py-3 text-gray-400 font-medium uppercase tracking-wider border-b border-gray-700;
+}
+
+.table td {
+  @apply px-4 py-3 border-b border-gray-700;
+}
+
+.table tr:hover {
+  @apply bg-gray-700/50;
+}

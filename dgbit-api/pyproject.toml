@@ -4,20 +4,43 @@ version = "0.1.0"
 description = "FastAPI service and background workers for the dgbit platform"
 authors = ["Your Name <your.email@example.com>"]
 packages = [
-    { include = "dgbit_api", from = "src" }
+    { include = "dgbit_api", from = "src" },
+    { include = "dgbit_data", from = "src" },
+    { include = "dgbit_services", from = "src" },
+    { include = "dgbit_cli", from = "src" }
 ]
 
 [tool.poetry.dependencies]
 python = "^3.11"
 fastapi = "^0.115.2"
 uvicorn = {extras = ["standard"], version = "^0.34.0"}
-pynng = "^0.8.2"
+pynng = "^0.8.1"
 pydantic-settings = "^2.5.2"
-dgbit-core = { path = "../../", develop = true }
+tortoise-orm = "^0.21.0"
+aiosqlite = "^0.19.0"
+loguru = "^0.7.2"
+python-json-logger = "^2.0.7"
+pyarrow = "^15.0.0"
+pydantic = "^2.5.0"
+ccxt = "^4.0.0"
+click = "^8.1.0"
+dgbit-core = { path = "./shared/python", develop = true }
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.0.0"
+pytest = "^8.0.0"
+pytest-asyncio = "^0.24.0"
 httpx = "^0.27.2"
+
+[tool.poetry.scripts]
+dgbit = "dgbit_cli:main"
+dgbit-api = "dgbit_api.main:app"
+dgbit-data-service = "dgbit_data.service:run_service"
+dgbit-event-bus = "dgbit_services.events:run_event_bus_service"
+dgbit-job-queue = "dgbit_services.jobs:run_job_queue_service"
+dgbit-strategy = "dgbit_services.strategy:run_strategy_service"
+dgbit-execution = "dgbit_services.execution:run_execution_service"
+dgbit-service-bus = "dgbit_services.orchestrator:main"
+dgbit-frontend = "dgbit_cli:run_frontend"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

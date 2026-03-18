@@ -23,7 +23,7 @@
 - Introduce formatting (`black`, `isort`) and lint checks plus a placeholder pytest suite with smoke tests to guard against regressions during refactor.
 
 ### Phase 1 – Foundations (Week 1–2)
-- Move to a layered folder structure within `shared/python/dgbit_core` (e.g., `core`, `services`, `domain`) while bootstrapping deployable apps under `apps/`.
+- Move to a layered folder structure within `dgbit-api/shared/python/dgbit_core` (e.g., `core`, `services`, `domain`) while bootstrapping deployable apps under `dgbit-api/src/`.
 - Create a config module (Pydantic settings) that centralizes environment variables, network toggles, and strategy parameters.
 - Add structured logging (loguru or stdlib) and tracing hooks for API calls.
 - Write `Makefile`/Poetry scripts for `setup`, `test`, `lint`, `backtest`, and `trade`.
