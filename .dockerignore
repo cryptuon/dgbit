@@ -1,0 +1,87 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv
+env
+ENV
+*.egg-info
+*.egg
+dist
+build
+.eggs
+*.manifest
+*.spec
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+.tox
+.nox
+
+# Documentation
+documentation/site
+docs/_build
+
+# Node.js (frontend)
+dgbit-ui/node_modules
+dgbit-ui/dist
+dgbit-ui/.cache
+dgbit-ui/coverage
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Database and logs
+*.db
+*.sqlite
+*.log
+logs/
+
+# Reports and artifacts
+reports/
+*.html
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile*
+docker-compose*
+!Dockerfile
+!docker-compose.yml
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Misc
+*.md
+!README.md
+LICENSE
+MANIFEST.in
+Makefile

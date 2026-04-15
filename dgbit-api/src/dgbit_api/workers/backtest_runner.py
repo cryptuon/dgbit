@@ -85,15 +85,26 @@ async def run_backtest_worker():
 
                 # Run backtest
                 backtester.strategy = strategy
-                results = backtester.run(data)
-                metrics = backtester.get_performance_metrics()
+                result = backtester.run(data)
 
                 # Prepare response
                 response = {
                     "job_uuid": job_uuid,
                     "symbol": symbol,
-                    "metrics": metrics,
-                    "results": results.to_dict(orient="records"),
+                    "metrics": result.metrics,
+                    "trades": [
+                        {
+                            "timestamp": str(t.timestamp),
+                            "action": t.action,
+                            "symbol": t.symbol,
+                            "price": t.price,
+                            "quantity": t.quantity,
+                            "capital": t.capital,
+                            "pnl": t.pnl,
+                            "pnl_pct": t.pnl_pct,
+                        }
+                        for t in result.trades
+                    ],
                 }
 
                 # Mark job as complete

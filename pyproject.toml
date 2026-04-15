@@ -1,0 +1,135 @@
+[project]
+name = "dgbit"
+version = "0.1.0"
+description = "Professional algorithmic trading framework for Bybit - backtest, execute, and monitor crypto trading strategies"
+authors = [{name = "Dipankar Sarkar", email = "me@dipankar.name"}]
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+keywords = [
+    "trading",
+    "crypto",
+    "bybit",
+    "algorithmic-trading",
+    "backtesting",
+    "quantitative-finance",
+    "trading-bot",
+    "cryptocurrency",
+    "bitcoin",
+    "trading-strategies",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+]
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "pynng>=0.8.1",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.5.0",
+    "tortoise-orm>=0.21.0",
+    "aiosqlite>=0.19.0",
+    "pandas>=2.1.0",
+    "numpy>=1.26.0",
+    "pybit>=5.0.0",
+    "pywavelets>=1.5.0",
+    "plotly>=5.18.0",
+    "ccxt>=4.0.0",
+    "loguru>=0.7.2",
+    "click>=8.1.0",
+    "python-json-logger>=2.0.7",
+    "pyarrow>=15.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.27.0",
+    "ruff>=0.4.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+]
+docs = [
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.24.0",
+    "mkdocs-gen-files>=0.5.0",
+    "mkdocs-literate-nav>=0.6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/cryptuon/dgbit"
+Documentation = "https://docs.cryptuon.com/dgbit"
+Repository = "https://github.com/cryptuon/dgbit"
+Issues = "https://github.com/cryptuon/dgbit/issues"
+Changelog = "https://github.com/cryptuon/dgbit/blob/main/CHANGELOG.md"
+
+[project.scripts]
+dgbit = "dgbit_cli:main"
+dgbit-api = "dgbit_api.main:run"
+dgbit-worker = "dgbit_api.workers.backtest_runner:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/dgbit-api/src",
+    "/dgbit-api/shared",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "dgbit-api/src/dgbit_api",
+    "dgbit-api/src/dgbit_services",
+    "dgbit-api/src/dgbit_data",
+    "dgbit-api/src/dgbit_cli",
+    "dgbit-api/shared/python/dgbit_core",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dgbit_api", "dgbit_core", "dgbit_services", "dgbit_data", "dgbit_cli"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["dgbit-api/tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true

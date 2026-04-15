@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Dict, Any
@@ -44,7 +45,7 @@ class Job(models.Model):
 
     def mark_complete(self, result: Dict[str, Any]) -> None:
         self.status = JobStatus.COMPLETED.value
-        self.result = str(result)
+        self.result = json.dumps(result)
         self.completed_at = datetime.utcnow()
 
     def mark_failed(self, reason: str) -> None:

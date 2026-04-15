@@ -6,6 +6,7 @@ from dgbit_api.core.config import settings
 from dgbit_api.core.logging import get_logger
 from dgbit_api.db.models import JobStatus, JobType
 from dgbit_api.services.job_service import JobService
+from dgbit_api.infra.messaging import get_api_client
 
 # Import service bus clients
 from dgbit_services import DataServiceClient

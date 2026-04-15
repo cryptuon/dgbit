@@ -1,0 +1,143 @@
+# dgbit - Algorithmic Trading Framework
+# Docker Compose configuration for local development and production deployment
+
+services:
+  # ============================================
+  # API Service - FastAPI backend
+  # ============================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: cryptuon/dgbit-api:latest
+    container_name: dgbit-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - NNG_COMMAND_ADDRESS=ipc:///tmp/dgbit_cmd.ipc
+      - NNG_EVENT_ADDRESS=ipc:///tmp/dgbit_evt.ipc
+      - BYBIT_API_KEY=${BYBIT_API_KEY:-}
+      - BYBIT_API_SECRET=${BYBIT_API_SECRET:-}
+      - BYBIT_TESTNET=${BYBIT_TESTNET:-true}
+      - DEFAULT_SYMBOL=${DEFAULT_SYMBOL:-BTCUSDT}
+      - DEFAULT_INTERVAL=${DEFAULT_INTERVAL:-1}
+    volumes:
+      - dgbit-db:/app/db
+      - dgbit-reports:/app/reports
+      - dgbit-logs:/app/logs
+      - dgbit-ipc:/tmp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - dgbit-network
+
+  # ============================================
+  # Backtest Worker - Background job processor
+  # ============================================
+  backtest-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: cryptuon/dgbit-api:latest
+    container_name: dgbit-backtest-worker
+    command: ["python", "-m", "dgbit_api.workers.backtest_runner"]
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - NNG_COMMAND_ADDRESS=ipc:///tmp/dgbit_cmd.ipc
+      - NNG_EVENT_ADDRESS=ipc:///tmp/dgbit_evt.ipc
+      - BYBIT_API_KEY=${BYBIT_API_KEY:-}
+      - BYBIT_API_SECRET=${BYBIT_API_SECRET:-}
+      - BYBIT_TESTNET=${BYBIT_TESTNET:-true}
+    volumes:
+      - dgbit-db:/app/db
+      - dgbit-reports:/app/reports
+      - dgbit-logs:/app/logs
+      - dgbit-ipc:/tmp
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dgbit-network
+
+  # ============================================
+  # Frontend - Vue 3 SPA (development)
+  # ============================================
+  ui:
+    build:
+      context: ./dgbit-ui
+      dockerfile: Dockerfile
+    image: cryptuon/dgbit-ui:latest
+    container_name: dgbit-ui
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://api:8000
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - dgbit-network
+    profiles:
+      - full
+
+  # ============================================
+  # Data Service - Market data provider
+  # ============================================
+  data-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: cryptuon/dgbit-api:latest
+    container_name: dgbit-data-service
+    command: ["python", "-m", "dgbit_data.service"]
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - NNG_DATA_ADDRESS=ipc:///tmp/dgbit_data.ipc
+      - BYBIT_API_KEY=${BYBIT_API_KEY:-}
+      - BYBIT_API_SECRET=${BYBIT_API_SECRET:-}
+      - BYBIT_TESTNET=${BYBIT_TESTNET:-true}
+    volumes:
+      - dgbit-logs:/app/logs
+      - dgbit-ipc:/tmp
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dgbit-network
+    profiles:
+      - full
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  dgbit-db:
+    name: dgbit-db
+  dgbit-reports:
+    name: dgbit-reports
+  dgbit-logs:
+    name: dgbit-logs
+  dgbit-ipc:
+    name: dgbit-ipc
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  dgbit-network:
+    name: dgbit-network
+    driver: bridge

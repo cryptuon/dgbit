@@ -1,235 +1,310 @@
-# dgbit – Bybit Trading Bot Framework
+<p align="center">
+  <h1 align="center">dgbit</h1>
+  <p align="center">
+    <strong>Professional Algorithmic Trading Framework for Bybit</strong>
+  </p>
+  <p align="center">
+    Build, backtest, and deploy crypto trading strategies with confidence
+  </p>
+</p>
 
-## Overview
+<p align="center">
+  <a href="https://pypi.org/project/dgbit/"><img src="https://img.shields.io/pypi/v/dgbit?color=blue&label=PyPI" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/dgbit/"><img src="https://img.shields.io/pypi/pyversions/dgbit" alt="Python versions"></a>
+  <a href="https://hub.docker.com/r/cryptuon/dgbit"><img src="https://img.shields.io/docker/v/cryptuon/dgbit?label=Docker" alt="Docker"></a>
+  <a href="https://github.com/cryptuon/dgbit/actions"><img src="https://img.shields.io/github/actions/workflow/status/cryptuon/dgbit/test.yml?label=Tests" alt="Tests"></a>
+  <a href="https://docs.cryptuon.com/dgbit"><img src="https://img.shields.io/badge/docs-mkdocs-blue" alt="Documentation"></a>
+  <a href="https://github.com/cryptuon/dgbit/blob/main/LICENSE"><img src="https://img.shields.io/github/license/cryptuon/dgbit" alt="License"></a>
+</p>
 
-dgbit is an experimental framework for researching and running short-term strategies on Bybit spot markets. The system provides:
+<p align="center">
+  <a href="https://docs.cryptuon.com/dgbit">Documentation</a> |
+  <a href="https://docs.cryptuon.com/dgbit/getting-started/quickstart/">Quick Start</a> |
+  <a href="https://docs.cryptuon.com/dgbit/guides/strategies/">Strategy Guide</a> |
+  <a href="https://github.com/cryptuon/dgbit/issues">Issues</a>
+</p>
 
-- High-frequency kline data fetching from Bybit
-- Multiple trading strategies (Wavelet Reversal, MA Crossover, RSI, Bollinger Bands)
-- Backtesting simulation with HTML reporting
-- Service bus architecture for scalable execution
-- Vue 3 web interface for monitoring and control
+---
 
-## Key Capabilities
+## Why dgbit?
 
-- **Data Fetching**: Fetch high-resolution kline data via `pybit` and `ccxt`
-- **Trading Strategies**: Pluggable strategy system with registry pattern
-- **Backtesting**: In-memory simulation with Plotly HTML reports
-- **Position Management**: Position tracking with entry/exit logic
-- **Service Bus**: NNG-based messaging for inter-process communication
+**dgbit** is a production-ready algorithmic trading framework designed for cryptocurrency traders who want to:
 
-## Architecture
+- **Backtest strategies** with historical data before risking real capital
+- **Execute automated trades** on Bybit spot markets with confidence
+- **Build custom strategies** using a pluggable, extensible architecture
+- **Monitor positions** through a modern web dashboard
+- **Deploy anywhere** with Docker support
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              dgbit Platform                              │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │                        Frontend (Vue 3)                           │   │
-│  │  - Dashboard    - Charts & Trading    - Portfolio                 │   │
-│  │  - Strategies   - System                                             │   │
-│  └──────────────────────────────────────────────────────────────────┘   │
-│                                   │ HTTP / WebSocket                     │
-│                                   ▼                                      │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │                     API Service (FastAPI)                         │   │
-│  │  - REST endpoints    - Request validation    - Job management     │   │
-│  └──────────────────────────────────────────────────────────────────┘   │
-│           │                     │                     │                  │
-│           │ NNG (IPC)           │ NNG (IPC)           │ NNG (IPC)        │
-│           ▼                     ▼                     ▼                  │
-│  ┌────────────────┐   ┌─────────────────┐   ┌─────────────────────┐    │
-│  │  Data Service  │   │  Backtest Worker│   │  Strategy Service   │    │
-│  │  (Market Data) │   │  (Backtesting)  │   │  (Signal Generation)│    │
-│  └────────────────┘   └─────────────────┘   └─────────────────────┘    │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+Whether you're a quantitative trader developing new strategies or a developer building trading automation, dgbit provides the infrastructure you need.
 
-## Project Structure
+## Key Features
 
-```
-dgbit/
-├── dgbit-api/                         # FastAPI backend service
-│   ├── src/dgbit_api/                # Main API application
-│   │   ├── api/                      # API routes
-│   │   ├── core/                     # Configuration, logging
-│   │   ├── db/                       # Database models
-│   │   ├── infra/                    # Infrastructure (messaging)
-│   │   ├── services/                 # Business services
-│   │   └── workers/                  # Background workers
-│   ├── src/dgbit_services/           # Service bus (NNG)
-│   ├── src/dgbit_data/               # Data layer (adapters)
-│   ├── src/dgbit_cli/                # CLI tools
-│   ├── shared/python/dgbit_core/     # Trading logic
-│   │   ├── backtesting/              # Backtesting engine
-│   │   ├── trading/                  # Strategy, position, execution
-│   │   ├── data/                     # Data fetching
-│   │   └── models/                   # Predictor models
-│   └── tests/                        # API tests
-│
-├── dgbit-ui/                         # Vue 3 frontend
-│   ├── src/
-│   │   ├── views/                    # Page components
-│   │   ├── stores/                   # Pinia stores
-│   │   ├── services/                 # API client
-│   │   └── router/                   # Vue Router
-│   └── ...
-│
-└── docs/                             # Documentation
-```
+| Feature | Description |
+|---------|-------------|
+| **Multi-Strategy Support** | Wavelet reversal, MA crossover, RSI, Bollinger Bands, and custom strategies |
+| **Comprehensive Backtesting** | In-memory simulation with detailed metrics and interactive Plotly reports |
+| **Real-time Execution** | Live trading on Bybit with position tracking and risk management |
+| **Service Bus Architecture** | Scalable NNG-based messaging for high-frequency operations |
+| **REST API** | Full-featured FastAPI backend with WebSocket support |
+| **Web Dashboard** | Vue 3 frontend for monitoring and control |
+| **Docker Ready** | One-command deployment with docker-compose |
 
-## Getting Started
+## Quick Start
 
-### Prerequisites
-
-- Python 3.11+
-- Poetry 1.6+
-- Node.js 18+ (for frontend)
-- Bybit API key/secret (for live trading)
-
-### Backend Setup
+### Installation
 
 ```bash
-cd dgbit-api
-poetry install
+# Install from PyPI
+pip install dgbit
+
+# Or with Docker
+docker pull cryptuon/dgbit
 ```
 
-### Frontend Setup
-
-```bash
-cd dgbit-ui
-npm install
-```
-
-### Environment Configuration
-
-Create a `.env` file in `dgbit-api/` with your credentials:
-
-```env
-BYBIT_API_KEY=...
-BYBIT_API_SECRET=...
-BYBIT_TESTNET=false
-```
-
-### Running the Platform
-
-**API Service:**
-
-```bash
-cd dgbit-api
-poetry run uvicorn dgbit_api.main:app --reload
-```
-
-**Frontend Development:**
-
-```bash
-cd dgbit-ui
-npm run dev
-```
-
-**Background Workers:**
-
-```bash
-cd dgbit-api
-poetry run python -m dgbit_api.workers.backtest_runner
-```
-
-### Running Tests
-
-```bash
-cd dgbit-api
-poetry run pytest
-```
-
-## API Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /health` | Health check |
-| `POST /backtests` | Create a backtest job |
-| `GET /backtests/{id}` | Get backtest results |
-| `GET /jobs` | List all jobs |
-| `GET /data/klines` | Get kline data |
-| `GET /data/symbols` | List trading pairs |
-| `GET /strategies` | List available strategies |
-| `POST /execution/orders` | Place an order |
-| `GET /execution/positions` | Get open positions |
-
-## Strategies
-
-### Built-in Strategies
-
-1. **Wavelet Reversal** - Daubechies wavelet-based reversal signals
-2. **MA Crossover** - Moving average crossover strategy
-3. **RSI** - Relative Strength Index strategy
-4. **Bollinger Bands** - Bollinger Bands breakout strategy
-
-### Creating Custom Strategies
-
-```python
-from dgbit_core.trading.strategy import BaseStrategy, StrategyMetadata, SignalType, strategy_registry
-
-class MyStrategy(BaseStrategy):
-    metadata = StrategyMetadata(
-        name="my_strategy",
-        description="My custom strategy",
-        author="You",
-        version="0.1.0",
-        signal_type=SignalType.MOMENTUM,
-        parameters={...},
-    )
-
-    def generate_signal(self, data):
-        # Your logic here
-        return signal_value
-
-strategy_registry.register(MyStrategy)
-```
-
-## Backtesting
+### Run Your First Backtest
 
 ```python
 from dgbit_core.backtesting import Backtester, BacktestConfig
-from dgbit_core.trading import create_strategy
+from dgbit_core.trading.strategy import WaveletReversalStrategy
+from dgbit_core.data.data_fetcher import BybitDataFetcher
 
-# Create strategy
-strategy = create_strategy("wavelet_reversal", min_signal_threshold=0.75)
+# Fetch historical data
+fetcher = BybitDataFetcher()
+data = fetcher.get_kline_data("BTCUSDT", interval="15", limit=1000)
 
-# Configure backtest
+# Configure and run backtest
 config = BacktestConfig(
     initial_capital=10000.0,
     transaction_fee=0.001,
 )
 
-# Run backtest
 backtester = Backtester(config=config)
-backtester.strategy = strategy
-result = backtester.run(market_data)
+backtester.strategy = WaveletReversalStrategy(min_signal_threshold=0.75)
+result = backtester.run(data)
 
-# Results include metrics and HTML report
+# View results
+print(f"Total Return: {result.metrics['total_return']:.2%}")
 print(f"Win Rate: {result.metrics['win_rate']:.2%}")
+print(f"Max Drawdown: {result.metrics['max_drawdown']:.2%}")
 ```
 
-## Service Bus
+### Start the API Server
 
-The platform uses NNG (nanomsg) for inter-process communication:
+```bash
+# Using pip installation
+dgbit-api
 
-| Socket | Pattern | Purpose |
-|--------|---------|---------|
-| `ipc:///tmp/dgbit_cmd.ipc` | REQ/REP | Command bus |
-| `ipc:///tmp/dgbit_evt.ipc` | PUB/SUB | Event bus |
-| `ipc:///tmp/dgbit_queue.ipc` | PUSH/PULL | Job queue |
+# Or with uvicorn directly
+uvicorn dgbit_api.main:app --host 0.0.0.0 --port 8000
+```
+
+### Docker Deployment
+
+```bash
+# Clone the repository
+git clone https://github.com/cryptuon/dgbit.git
+cd dgbit
+
+# Configure environment
+cp dgbit-api/.env.example dgbit-api/.env
+# Edit .env with your Bybit API credentials
+
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f api
+```
+
+## Architecture
+
+```
+                           dgbit Platform
+    ┌─────────────────────────────────────────────────────────────┐
+    │                                                              │
+    │   ┌──────────────────────────────────────────────────────┐  │
+    │   │                   Vue 3 Dashboard                     │  │
+    │   │    Charts | Portfolio | Strategies | Monitoring       │  │
+    │   └──────────────────────────────────────────────────────┘  │
+    │                           │ HTTP / WebSocket                 │
+    │                           ▼                                  │
+    │   ┌──────────────────────────────────────────────────────┐  │
+    │   │                 FastAPI REST API                      │  │
+    │   │   /backtests  /jobs  /data  /strategies  /execution   │  │
+    │   └──────────────────────────────────────────────────────┘  │
+    │            │                │                │               │
+    │            │ NNG IPC        │ NNG IPC        │ NNG IPC       │
+    │            ▼                ▼                ▼               │
+    │   ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐   │
+    │   │ Data Service │ │   Backtest   │ │ Strategy Service │   │
+    │   │ (Market Data)│ │    Worker    │ │ (Signal Gen)     │   │
+    │   └──────────────┘ └──────────────┘ └──────────────────┘   │
+    │                                                              │
+    │   ┌──────────────────────────────────────────────────────┐  │
+    │   │               Shared Trading Core                     │  │
+    │   │  Strategies | Backtesting | Position Tracking | Data  │  │
+    │   └──────────────────────────────────────────────────────┘  │
+    │                           │                                  │
+    └───────────────────────────┼──────────────────────────────────┘
+                                ▼
+                         Bybit Exchange API
+```
+
+## Built-in Trading Strategies
+
+| Strategy | Type | Description |
+|----------|------|-------------|
+| **Wavelet Reversal** | Mean Reversion | Daubechies wavelet decomposition for trend reversal detection |
+| **MA Crossover** | Trend Following | Classic moving average crossover signals |
+| **RSI** | Momentum | Relative Strength Index overbought/oversold signals |
+| **Bollinger Bands** | Volatility | Breakout detection using Bollinger Band boundaries |
+
+### Creating Custom Strategies
+
+```python
+from dgbit_core.trading.strategy import (
+    BaseStrategy, 
+    StrategyMetadata, 
+    SignalType,
+    strategy_registry
+)
+
+class MyMomentumStrategy(BaseStrategy):
+    """Custom momentum-based trading strategy."""
+    
+    metadata = StrategyMetadata(
+        name="my_momentum",
+        description="Custom momentum strategy with volume confirmation",
+        author="Your Name",
+        version="1.0.0",
+        signal_type=SignalType.MOMENTUM,
+        parameters={
+            "lookback_period": {"type": "int", "default": 14},
+            "volume_threshold": {"type": "float", "default": 1.5},
+        },
+    )
+    
+    def generate_signal(self, data):
+        # Your strategy logic here
+        momentum = data['close'].pct_change(self.lookback_period).iloc[-1]
+        volume_ratio = data['volume'].iloc[-1] / data['volume'].mean()
+        
+        if momentum > 0.02 and volume_ratio > self.volume_threshold:
+            return 0.8  # Strong buy signal
+        elif momentum < -0.02 and volume_ratio > self.volume_threshold:
+            return 0.2  # Strong sell signal
+        return 0.5  # Neutral
+
+# Register your strategy
+strategy_registry.register(MyMomentumStrategy)
+```
+
+## API Reference
+
+### REST Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Service health and stats |
+| `/api/backtests` | POST | Schedule a backtest job |
+| `/api/jobs` | GET | List all jobs |
+| `/api/jobs/{uuid}` | GET | Get job status and results |
+| `/api/data/klines` | GET | Fetch OHLCV data |
+| `/api/data/symbols` | GET | List available trading pairs |
+| `/api/strategies` | GET | List available strategies |
+| `/api/strategies/{name}/signal` | POST | Generate trading signal |
+| `/api/execution/orders` | POST | Place an order |
+| `/api/execution/positions` | GET | Get open positions |
+
+### WebSocket Events
+
+```javascript
+// Connect to event stream
+const ws = new WebSocket('ws://localhost:8000/api/ws/events');
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Event:', data.type, data.payload);
+};
+
+// Event types: job.created, job.completed, job.failed, 
+//              trade.entered, trade.exited, signal.generated
+```
+
+## Configuration
+
+Create a `.env` file with your settings:
+
+```env
+# Bybit API (required for live trading)
+BYBIT_API_KEY=your_api_key
+BYBIT_API_SECRET=your_api_secret
+BYBIT_TESTNET=true
+
+# Application settings
+ENVIRONMENT=development
+LOG_LEVEL=INFO
+
+# Default trading parameters
+DEFAULT_SYMBOL=BTCUSDT
+DEFAULT_INTERVAL=1
+
+# Service bus addresses
+NNG_COMMAND_ADDRESS=ipc:///tmp/dgbit_cmd.ipc
+NNG_EVENT_ADDRESS=ipc:///tmp/dgbit_evt.ipc
+```
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md) - System architecture overview
-- [Strategy Architecture](docs/STRATEGY_ARCHITECTURE.md) - Extensible strategy system
-- [NNG Architecture](docs/NNG_ARCHITECTURE.md) - Service bus design
-- [Roadmap](docs/ROADMAP.md) - Development roadmap
-- [Development Guide](docs/DEVELOPMENT_GUIDE.md) - Setup and contribution guide
+Comprehensive documentation is available at **[docs.cryptuon.com/dgbit](https://docs.cryptuon.com/dgbit)**:
+
+- [Installation Guide](https://docs.cryptuon.com/dgbit/getting-started/installation/)
+- [Quick Start Tutorial](https://docs.cryptuon.com/dgbit/getting-started/quickstart/)
+- [Strategy Development](https://docs.cryptuon.com/dgbit/guides/strategies/)
+- [Backtesting Guide](https://docs.cryptuon.com/dgbit/guides/backtesting/)
+- [API Reference](https://docs.cryptuon.com/dgbit/api/rest-api/)
+- [Docker Deployment](https://docs.cryptuon.com/dgbit/deployment/docker/)
+
+## Development
+
+```bash
+# Clone repository
+git clone https://github.com/cryptuon/dgbit.git
+cd dgbit
+
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest dgbit-api/tests/
+
+# Run linting
+ruff check .
+
+# Start development server
+cd dgbit-api
+uvicorn dgbit_api.main:app --reload
+```
+
+## Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](https://docs.cryptuon.com/dgbit/contributing/) for details on:
+
+- Code style and standards
+- Pull request process
+- Development setup
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Disclaimer
+
+**Trading cryptocurrencies involves significant risk.** This software is provided for educational and research purposes only. Past performance does not guarantee future results. Always test strategies thoroughly with paper trading before using real funds. The authors are not responsible for any financial losses incurred while using this software.
+
+---
+
+<p align="center">
+  Made with care by <a href="https://github.com/cryptuon">Cryptuon</a>
+</p>

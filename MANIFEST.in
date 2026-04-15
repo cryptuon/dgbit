@@ -1,0 +1,14 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include pyproject.toml
+
+recursive-include dgbit-api/src *.py
+recursive-include dgbit-api/shared *.py
+recursive-include documentation *.md *.yml
+
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .git
+global-exclude .env
+global-exclude *.db
