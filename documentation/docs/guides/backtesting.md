@@ -18,11 +18,11 @@ Backtesting simulates how a strategy would have performed on historical data. Th
 ```python
 from dgbit_core.data.data_fetcher import BybitDataFetcher
 
-fetcher = BybitDataFetcher()
+fetcher = BybitDataFetcher(api_key="", api_secret="", testnet=True)
 data = fetcher.get_kline_data(
     symbol="BTCUSDT",
     interval="15",    # 15-minute candles
-    limit=2000,       # Number of candles
+    limit=1000,       # Bybit caps `limit` at 1000 per request
 )
 
 print(f"Data range: {data['timestamp'].min()} to {data['timestamp'].max()}")
@@ -107,12 +107,8 @@ $$\text{Profit Factor} = \frac{\text{Total Profits}}{\text{Total Losses}}$$
 
 **Good values:** > 1.5 (profitable), > 2.0 (excellent)
 
-### Sharpe Ratio
-Risk-adjusted return measure.
-
-$$\text{Sharpe} = \frac{\text{Mean Return} - \text{Risk Free Rate}}{\text{Std Dev of Returns}}$$
-
-**Good values:** > 1.0 (acceptable), > 2.0 (excellent)
+!!! note "Sharpe ratio is not computed"
+    The current `Backtester._calculate_metrics()` returns `total_trades`, `win_rate`, `avg_return`, `avg_duration`, `final_capital`, `total_return`, `max_drawdown`, `profit_factor`, `wins`, and `losses`. Sharpe ratio and other risk-adjusted measures are not included; compute them from `result.equity_curve` if required.
 
 ## Advanced Backtesting
 
@@ -216,22 +212,19 @@ for symbol, metrics in portfolio_results.items():
 
 ## Backtest Reports
 
-dgbit generates interactive HTML reports with Plotly:
+`Backtester.run(...)` does **not** write any files. To render the interactive Plotly HTML reports, call `plot_results` after the run:
 
 ```python
-# Reports are saved automatically
 result = backtester.run(data)
-
-# Report location
-print(f"Report saved to: {config.report_dir}/backtest_report.html")
+files = backtester.plot_results(data, result)
+print(f"Chart:   {files['chart']}")
+print(f"Metrics: {files['metrics']}")
 ```
 
-The report includes:
+Two HTML files are written into `config.report_dir` (default `reports`), timestamped per run:
 
-- **Price Chart**: Candlestick chart with entry/exit markers
-- **Equity Curve**: Capital over time
-- **Trade Table**: Detailed trade list
-- **Metrics Summary**: Key performance statistics
+- A candlestick chart with entry/exit markers and an account balance subplot.
+- A standalone Plotly table of `Win Rate`, `Avg Return`, `Total Return`, `Max Drawdown`, `Total Trades`, and `Profit Factor`.
 
 ## Via the API
 

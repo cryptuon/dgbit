@@ -1,24 +1,24 @@
 # WebSocket Reference
 
-Real-time event streaming via WebSocket connections.
+dgbit-api exposes two WebSocket endpoints. They are currently scaffolds: the routes accept connections and echo client messages back, but the NNG event bus is not yet wired into them. Treat the documented event payloads below as the **planned** envelope shape, not as something the API will emit unprompted today.
 
 ## Connection
 
 ### Event Stream
 
-Connect to the main event stream:
-
 ```
 ws://localhost:8000/api/ws/events
 ```
 
-### Job-Specific Stream
+The route is implemented in `dgbit_api.api.routes.websocket_events`. Today it sends `{"type": "ping", "received": <client message>}` back for every message received and registers the connection in a `ConnectionManager` so that future event-bus integration can broadcast to all subscribers.
 
-Connect to updates for a specific job:
+### Job-Specific Stream
 
 ```
 ws://localhost:8000/api/ws/jobs/{job_uuid}
 ```
+
+The route emits a single `{"type": "subscribed", "job_uuid": "...", "message": "..."}` on connect and replies to client messages with `{"type": "ack", "job_uuid": "..."}`.
 
 ## Event Format
 
@@ -32,7 +32,9 @@ All events follow this format:
 }
 ```
 
-## Event Types
+## Planned Event Types
+
+The `EventPublisher` / `EventSubscriber` classes in `dgbit_services.events` define a generic NNG pub/sub layer. The event-type strings below are the conventions used elsewhere in the codebase (notably the route docstring lists `job.created`, `job.started`, `job.completed`, `job.failed`, and `trade.executed`). Wire them into the WebSocket layer once the bridge is implemented.
 
 ### Job Events
 

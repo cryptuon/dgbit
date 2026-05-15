@@ -16,15 +16,11 @@ import dgbit_core
 
 ### BybitDataFetcher
 
-Fetch market data from Bybit.
+Fetch market data from Bybit. `api_key` and `api_secret` are positional and required; pass empty strings if you only need the public kline endpoints.
 
 ```python
 from dgbit_core.data.data_fetcher import BybitDataFetcher
 
-# Public data (no API keys needed)
-fetcher = BybitDataFetcher()
-
-# With API keys (for private endpoints)
 fetcher = BybitDataFetcher(
     api_key="your_key",
     api_secret="your_secret",
@@ -32,30 +28,30 @@ fetcher = BybitDataFetcher(
 )
 ```
 
-#### get_kline_data
+For purely public data you can also use `BybitDataSource` from `dgbit_core.data.fetcher`, which defaults both API fields to `""`.
 
-Fetch OHLCV candlestick data.
+#### get_kline_data
 
 ```python
 data = fetcher.get_kline_data(
-    symbol="BTCUSDT",     # Trading pair
-    interval="15",        # Interval in minutes
-    limit=1000,           # Number of candles
+    symbol="BTCUSDT",
+    interval="15",   # minutes; "D" for daily on Bybit's kline API
+    limit=1000,
 )
-
-# Returns pandas DataFrame with columns:
-# timestamp, open, high, low, close, volume
 ```
+
+The returned DataFrame has columns `timestamp, open, high, low, close, volume, turnover, price_change, volume_change, rolling_volatility, rolling_volume` and is sorted ascending by timestamp.
 
 **Parameters:**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `symbol` | str | Required | Trading pair (e.g., "BTCUSDT") |
-| `interval` | str | "1" | Candle interval in minutes |
-| `limit` | int | 200 | Number of candles (max 1000) |
-| `start_time` | datetime | None | Start time for historical data |
-| `end_time` | datetime | None | End time for historical data |
+| `symbol` | str | Required | Trading pair (e.g. `"BTCUSDT"`) |
+| `interval` | str | `"1"` | Candle interval |
+| `lookback_hours` | int | `24` | Used to derive `limit` |
+| `limit` | int | `1000` | Capped at `min(1000, lookback_hours * 60)` and Bybit's per-request maximum of 1000 |
+
+The fetcher always calls the spot `get_kline` endpoint (`category="spot"`).
 
 ## Trading Strategies
 
@@ -92,39 +88,27 @@ class MyStrategy(BaseStrategy):
 
 ### Built-in Strategies
 
+`WaveletReversalStrategy` lives in `dgbit_core.trading.strategy`; the other three are defined in `dgbit_core.trading.examples` and re-exported from `dgbit_core.trading`.
+
 ```python
-from dgbit_core.trading.strategy import (
+from dgbit_core.trading import (
     WaveletReversalStrategy,
     MACrossoverStrategy,
     RSIStrategy,
     BollingerBandStrategy,
 )
 
-# Wavelet Reversal
-strategy = WaveletReversalStrategy(
+WaveletReversalStrategy(
     min_signal_threshold=0.75,
-    take_profit_pct=0.02,
-    stop_loss_pct=0.01,
+    take_profit_pct=0.002,
+    stop_loss_pct=0.005,
 )
 
-# MA Crossover
-strategy = MACrossoverStrategy(
-    fast_period=12,
-    slow_period=26,
-)
+MACrossoverStrategy(fast_period=10, slow_period=20, ma_type="sma")
 
-# RSI
-strategy = RSIStrategy(
-    period=14,
-    oversold=30,
-    overbought=70,
-)
+RSIStrategy(period=14, oversold=30.0, overbought=70.0)
 
-# Bollinger Bands
-strategy = BollingerBandStrategy(
-    period=20,
-    num_std=2.0,
-)
+BollingerBandStrategy(period=20, std_dev=2.0)
 ```
 
 ### Strategy Registry
@@ -209,153 +193,84 @@ for point in result.equity_curve:
 
 ### Position
 
-Track trading positions.
-
 ```python
+from datetime import datetime
 from dgbit_core.trading.position import Position, PositionSide
 
 position = Position(
     symbol="BTCUSDT",
     side=PositionSide.LONG,
     entry_price=42000.0,
+    entry_time=datetime.utcnow(),
     quantity=0.001,
-    entry_time=datetime.now(),
     take_profit_price=42840.0,
     stop_loss_price=41580.0,
 )
 
-# Check position status
-print(f"Is open: {position.is_open}")
-print(f"Entry: {position.entry_price}")
-
-# Calculate unrealized PnL
-current_price = 42500.0
-pnl = position.calculate_pnl(current_price)
-print(f"Unrealized PnL: {pnl:.2f}")
+# Unrealised PnL ratio (positive for an in-profit long)
+pnl_ratio = position.calculate_pnl(current_price=42500.0)
 
 # Close position
-position.close(exit_price=42500.0, exit_time=datetime.now())
-print(f"Realized PnL: {position.return_pct:.2%}")
+position.close(exit_price=42500.0, exit_time=datetime.utcnow())
+print(f"Realized return: {position.return_pct():.2%}")
 ```
+
+`return_pct` is a method (not a property), and `Position.duration` is the duration in minutes between entry and exit.
 
 ### Order
 
-Represent trading orders.
+`Order` carries only the basic fields used by the backtester / live trader; advanced order types are handled in the Bybit adapter, not on this dataclass.
 
 ```python
-from dgbit_core.trading.position import Order, OrderType, OrderStatus
+from dgbit_core.trading.position import Order, OrderType, OrderStatus, PositionSide
 
-order = Order(
+Order(
     symbol="BTCUSDT",
     side=PositionSide.LONG,
     order_type=OrderType.MARKET,
     quantity=0.001,
-    price=None,  # Market order
-)
-
-# Limit order
-order = Order(
-    symbol="BTCUSDT",
-    side=PositionSide.LONG,
-    order_type=OrderType.LIMIT,
-    quantity=0.001,
-    price=41500.0,
 )
 ```
 
+`OrderType` exposes `MARKET` and `LIMIT`; `OrderStatus` exposes `PENDING`, `FILLED`, `CANCELLED`.
+
 ## Wavelet Predictor
 
-ML-based price prediction using wavelets.
+Wavelet-based reversal probability used by `WaveletReversalStrategy`.
 
 ```python
 from dgbit_core.models.predictor import PricePredictor
 
-predictor = PricePredictor()
+predictor = PricePredictor()  # uses 'db1' wavelet, level=3, window_size=60
 
-# Get reversal probability
-probability = predictor.get_reversal_probability(data['close'].values)
-print(f"Reversal probability: {probability:.2%}")
+# Pass the OHLCV DataFrame; returns a probability in [0.0, 1.0]
+prob = predictor.predict(data)
 
-# Decompose signal
-coefficients = predictor.decompose_signal(data['close'].values)
+# Lower-level helpers operate on numpy arrays
+approximation, details = predictor.decompose_signal(data['close'].values)
 ```
+
+Despite the strategy docstring mentioning "Daubechies 4" (db4), the shipped implementation uses `db1` (the Haar wavelet) at level 3 over a 60-sample window. Fewer than 60 rows of OHLCV data make `predict` return `0.0`.
 
 ## Service Clients
 
-### DataServiceClient
+NNG-backed clients used by the FastAPI routes. Their public methods match the routes documented in [REST API](rest-api.md):
 
-Access the data service via NNG.
+- `dgbit_services.DataServiceClient` (`get_klines`, `get_cache_status`, `clear_cache`)
+- `dgbit_services.strategy.StrategyClient` (`list_strategies`, `generate_signal`)
+- `dgbit_services.execution.ExecutionClient` (`get_orders`, `get_order`, `create_order`, `cancel_order`, `get_positions`, `get_balance`, `close_position`)
 
-```python
-from dgbit_services import DataServiceClient
-
-client = DataServiceClient()
-await client.connect()
-
-# Fetch data
-data = await client.fetch_klines("BTCUSDT", interval="15", limit=100)
-
-await client.close()
-```
-
-### StrategyClient
-
-Access the strategy service.
-
-```python
-from dgbit_services.strategy import StrategyClient
-
-client = StrategyClient()
-await client.connect()
-
-# Generate signal
-signal = await client.generate_signal(
-    strategy="wavelet_reversal",
-    symbol="BTCUSDT",
-)
-
-await client.close()
-```
-
-### ExecutionClient
-
-Access the execution service.
-
-```python
-from dgbit_services.execution import ExecutionClient
-
-client = ExecutionClient()
-await client.connect()
-
-# Place order
-order = await client.place_order(
-    symbol="BTCUSDT",
-    side="buy",
-    quantity=0.001,
-)
-
-# Get positions
-positions = await client.get_positions()
-
-await client.close()
-```
+Refer to the source under `dgbit-api/src/dgbit_services/` for the exact signatures and async semantics of each method.
 
 ## Error Handling
 
-```python
-from dgbit_core.exceptions import (
-    DGBitError,
-    DataFetchError,
-    StrategyError,
-    BacktestError,
-)
+There is no dedicated `dgbit_core.exceptions` module yet. The backtester raises plain `ValueError` for missing columns; the Bybit adapter and data fetcher log errors via `loguru` and return empty results. Catch the standard exception types when integrating:
 
+```python
 try:
     result = backtester.run(data)
-except BacktestError as e:
+except ValueError as e:
     print(f"Backtest failed: {e}")
-except DGBitError as e:
-    print(f"General error: {e}")
 ```
 
 ## Type Hints

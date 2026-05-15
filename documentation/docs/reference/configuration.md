@@ -1,48 +1,30 @@
 # Configuration Reference
 
-Complete reference of all configuration options.
+Reference for configuration surfaced by the dgbit-api `Settings` class (`dgbit_api.core.config.Settings`). Environment variables not listed here are not consumed by `Settings`; some are consumed directly by `docker-compose.yml` interpolation or by service-specific code paths.
 
-## Environment Variables
+## Settings fields
 
-### Application Settings
+| Env var | Field | Default |
+|---------|-------|---------|
+| `APP_NAME` | `app_name` | `dgbit-api` |
+| `API_PREFIX` | `api_prefix` | `/api` |
+| `ENVIRONMENT` | `environment` | `development` |
+| `LOG_LEVEL` | `log_level` | `INFO` |
+| `NNG_COMMAND_ADDRESS` | `nng_command_address` | `ipc:///tmp/dgbit_commands.ipc` |
+| `NNG_EVENT_ADDRESS` | `nng_event_address` | `ipc:///tmp/dgbit_events.ipc` |
+| `DEFAULT_SYMBOL` | `default_symbol` | `BTCUSDT` |
+| `DEFAULT_INTERVAL` | `default_interval` | `1` |
+| `BYBIT_API_KEY` | `bybit_api_key` | `""` |
+| `BYBIT_API_SECRET` | `bybit_api_secret` | `""` |
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `APP_NAME` | string | `dgbit` | Application name |
-| `ENVIRONMENT` | string | `development` | Runtime environment |
-| `LOG_LEVEL` | string | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+## Compose-only or service-specific variables
 
-### Bybit API
+These are referenced in `docker-compose.yml` or read ad-hoc from `os.getenv` but are **not** part of `Settings`:
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `BYBIT_API_KEY` | string | `""` | Bybit API key |
-| `BYBIT_API_SECRET` | string | `""` | Bybit API secret |
-| `BYBIT_TESTNET` | boolean | `true` | Use Bybit testnet |
+- `BYBIT_TESTNET` (forwarded to API, worker, and data-service containers; defaults to `true` in compose)
+- `NNG_DATA_ADDRESS` (used by the data-service container)
 
-### Trading Defaults
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `DEFAULT_SYMBOL` | string | `BTCUSDT` | Default trading pair |
-| `DEFAULT_INTERVAL` | string | `1` | Default candle interval (minutes) |
-
-### Service Bus (NNG)
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `NNG_COMMAND_ADDRESS` | string | `ipc:///tmp/dgbit_cmd.ipc` | Command bus address |
-| `NNG_EVENT_ADDRESS` | string | `ipc:///tmp/dgbit_evt.ipc` | Event bus address |
-| `NNG_JOB_QUEUE_ADDRESS` | string | `ipc:///tmp/dgbit_queue.ipc` | Job queue address |
-| `NNG_DATA_ADDRESS` | string | `ipc:///tmp/dgbit_data.ipc` | Data service address |
-
-### API Server
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `API_HOST` | string | `0.0.0.0` | API bind host |
-| `API_PORT` | integer | `8000` | API bind port |
-| `API_PREFIX` | string | `/api` | API route prefix |
+The HTTP bind host/port for the API server (`uvicorn`'s `--host` / `--port`) are command-line arguments — there are no `API_HOST` / `API_PORT` `Settings` fields.
 
 ## BacktestConfig
 
@@ -68,53 +50,53 @@ config = BacktestConfig(
 
 ## Strategy Parameters
 
-### Common Parameters
+### `BaseStrategy` common kwargs
 
-All strategies support these parameters:
+Every strategy inherits these from `BaseStrategy.__init__`:
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `take_profit_pct` | float | `0.02` | Take profit percentage |
-| `stop_loss_pct` | float | `0.01` | Stop loss percentage |
-| `min_signal_threshold` | float | `0.7` | Minimum signal to enter |
+| Parameter | Default |
+|-----------|---------|
+| `min_signal_threshold` | `0.5` |
+| `take_profit_pct` | `0.002` |
+| `stop_loss_pct` | `0.005` |
+| `position_size_pct` | `1.0` |
 
-### WaveletReversalStrategy
+Subclasses override these defaults via their own `__init__` defaults (or their `metadata.parameters` schema).
 
-| Parameter | Type | Default | Range | Description |
-|-----------|------|---------|-------|-------------|
-| `min_signal_threshold` | float | `0.75` | 0.0-1.0 | Signal threshold |
-| `take_profit_pct` | float | `0.02` | 0.001-0.1 | Take profit % |
-| `stop_loss_pct` | float | `0.01` | 0.001-0.1 | Stop loss % |
-| `wavelet_level` | int | `3` | 1-5 | Decomposition level |
+### `WaveletReversalStrategy`
 
-### MACrossoverStrategy
+| Parameter | Default |
+|-----------|---------|
+| `min_signal_threshold` | `0.75` |
+| `take_profit_pct` | `0.002` |
+| `stop_loss_pct` | `0.005` |
 
-| Parameter | Type | Default | Range | Description |
-|-----------|------|---------|-------|-------------|
-| `fast_period` | int | `12` | 2-50 | Fast EMA period |
-| `slow_period` | int | `26` | 10-200 | Slow EMA period |
-| `take_profit_pct` | float | `0.03` | 0.001-0.1 | Take profit % |
-| `stop_loss_pct` | float | `0.015` | 0.001-0.1 | Stop loss % |
+The strategy currently exposes no `wavelet_level` or `lookback_period` constructor parameter; those values are fixed on the underlying `PricePredictor` (`level=3`, `window_size=60`).
 
-### RSIStrategy
+### `MACrossoverStrategy`
 
-| Parameter | Type | Default | Range | Description |
-|-----------|------|---------|-------|-------------|
-| `period` | int | `14` | 2-50 | RSI period |
-| `oversold` | int | `30` | 10-40 | Oversold threshold |
-| `overbought` | int | `70` | 60-90 | Overbought threshold |
-| `take_profit_pct` | float | `0.025` | 0.001-0.1 | Take profit % |
-| `stop_loss_pct` | float | `0.012` | 0.001-0.1 | Stop loss % |
+| Parameter | Default | Notes |
+|-----------|---------|-------|
+| `fast_period` | `10` | `metadata.parameters` declares range `[2, 100]` |
+| `slow_period` | `20` | range `[5, 200]` |
+| `ma_type` | `"sma"` | one of `"sma"`, `"ema"`, `"wma"` |
 
-### BollingerBandStrategy
+### `RSIStrategy`
 
-| Parameter | Type | Default | Range | Description |
-|-----------|------|---------|-------|-------------|
-| `period` | int | `20` | 5-50 | BB period |
-| `num_std` | float | `2.0` | 1.0-3.0 | Standard deviations |
-| `mode` | string | `mean_reversion` | - | `mean_reversion` or `breakout` |
-| `take_profit_pct` | float | `0.02` | 0.001-0.1 | Take profit % |
-| `stop_loss_pct` | float | `0.01` | 0.001-0.1 | Stop loss % |
+| Parameter | Default |
+|-----------|---------|
+| `period` | `14` |
+| `oversold` | `30.0` |
+| `overbought` | `70.0` |
+
+### `BollingerBandStrategy`
+
+| Parameter | Default |
+|-----------|---------|
+| `period` | `20` |
+| `std_dev` | `2.0` |
+
+The constructor keyword is `std_dev`, not `num_std`. There is no `mode` parameter; the strategy returns the close's relative position within the bands.
 
 ## Bybit Intervals
 
@@ -136,29 +118,9 @@ Supported candle intervals:
 | `W` | 10080 | 1 week |
 | `M` | 43200 | 1 month |
 
-## Logging Configuration
+## Logging
 
-### Log Levels
-
-| Level | Value | Description |
-|-------|-------|-------------|
-| `DEBUG` | 10 | Detailed debugging info |
-| `INFO` | 20 | Normal operations |
-| `WARNING` | 30 | Unexpected but handled |
-| `ERROR` | 40 | Failures |
-| `CRITICAL` | 50 | System failures |
-
-### Log Format
-
-```python
-from dgbit_api.core.logging import setup_logging
-
-# Standard format
-setup_logging(log_level="INFO")
-
-# JSON format (production)
-setup_logging(log_level="INFO", json_format=True)
-```
+Logging is configured by `dgbit_api.core.logging`. Set the `LOG_LEVEL` env var (default `INFO`) to control verbosity.
 
 ## Docker Configuration
 

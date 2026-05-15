@@ -1,6 +1,6 @@
 site_name: dgbit Documentation
-site_url: https://docs.cryptuon.com/dgbit
-site_description: Professional algorithmic trading framework for Bybit - Build, backtest, and deploy crypto trading strategies
+site_url: https://dgbit.docs.cryptuon.com/
+site_description: Algorithmic trading framework for Bybit - backtest and execute crypto trading strategies
 site_author: Dipankar Sarkar
 repo_name: cryptuon/dgbit
 repo_url: https://github.com/cryptuon/dgbit
@@ -10,7 +10,6 @@ copyright: Copyright &copy; 2026 Dipankar Sarkar
 
 theme:
   name: material
-  custom_dir: overrides
   language: en
   features:
     - navigation.tabs
@@ -50,15 +49,6 @@ theme:
 plugins:
   - search:
       separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
-  - mkdocstrings:
-      handlers:
-        python:
-          options:
-            show_source: true
-            show_root_heading: true
-            show_category_heading: true
-            members_order: source
-            heading_level: 3
 
 markdown_extensions:
   - abbr
@@ -141,8 +131,3 @@ extra:
       link: https://pypi.org/project/dgbit/
     - icon: fontawesome/brands/docker
       link: https://hub.docker.com/r/cryptuon/dgbit
-  analytics:
-    provider: google
-    property: G-XXXXXXXXXX
-  version:
-    provider: mike

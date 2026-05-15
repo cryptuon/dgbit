@@ -155,34 +155,9 @@ Supports:
 
 ### Production
 
-```
-                   ┌──────────────┐
-                   │   Internet   │
-                   └──────────────┘
-                          │
-                   ┌──────────────┐
-                   │   nginx/LB   │
-                   └──────────────┘
-                          │
-         ┌────────────────┼────────────────┐
-         ▼                ▼                ▼
-    ┌────────┐       ┌────────┐       ┌────────┐
-    │  API   │       │  API   │       │   UI   │
-    │   #1   │       │   #2   │       │  (CDN) │
-    └────────┘       └────────┘       └────────┘
-         │                │
-         └────────┬───────┘
-                  ▼
-         ┌────────────────┐
-         │    Workers     │
-         │  (scaled out)  │
-         └────────────────┘
-                  │
-                  ▼
-         ┌────────────────┐
-         │   PostgreSQL   │
-         └────────────────┘
-```
+A typical production layout puts a reverse proxy in front of one or more API processes, with the SQLite database mounted on a persistent volume. The backtest worker, data service, and UI run as additional containers per `docker-compose.yml` (the latter two live behind the `full` compose profile).
+
+The shipped code only supports SQLite via Tortoise ORM; swapping to another database currently requires patching `dgbit_api.db.connection`.
 
 ## Security Considerations
 
@@ -191,15 +166,6 @@ Supports:
 3. **Authentication**: Implement for production
 4. **Rate Limiting**: Prevent abuse
 5. **Input Validation**: Pydantic models
-
-## Performance Characteristics
-
-| Component | Latency | Throughput |
-|-----------|---------|------------|
-| API Response | < 50ms | 1000 req/s |
-| Signal Generation | < 100ms | 100/s |
-| Backtest (1000 candles) | ~2s | 30/min |
-| WebSocket Events | < 10ms | 10,000/s |
 
 ## Next Steps
 

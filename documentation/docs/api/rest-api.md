@@ -24,19 +24,15 @@ GET /api/health
 
 ```json
 {
-    "service": "dgbit",
+    "service": "dgbit-api",
     "environment": "development",
     "status": "ok",
     "version": "0.2.0",
-    "stats": {
-        "total_jobs": 42,
-        "pending": 2,
-        "running": 1,
-        "completed": 35,
-        "failed": 4
-    }
+    "stats": { /* output of JobService.get_stats() */ }
 }
 ```
+
+`service` is the value of `Settings.app_name` (`dgbit-api` by default) and `environment` reflects `Settings.environment`.
 
 ---
 
@@ -71,7 +67,7 @@ Content-Type: application/json
 | `initial_capital` | number | No | Starting capital (default: 10000.0) |
 | `transaction_fee` | number | No | Fee per trade (default: 0.001) |
 
-**Response:**
+**Response (worker dispatch succeeded):**
 
 ```json
 {
@@ -80,6 +76,8 @@ Content-Type: application/json
     "message": "Backtest job dispatched"
 }
 ```
+
+If the NNG dispatch fails, the API still returns 200 with the job's current status and a `warning` field instead of `message`. Inspect the response to determine whether the worker actually picked the job up.
 
 ---
 
@@ -93,34 +91,38 @@ Get all jobs with optional filtering.
 GET /api/jobs
 GET /api/jobs?status=completed
 GET /api/jobs?job_type=backtest
+GET /api/jobs?limit=20
 ```
 
 **Query Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `status` | string | Filter by status (pending, running, completed, failed) |
-| `job_type` | string | Filter by type (backtest, data_sync, signal) |
+| `status` | `JobStatus` | Filter by status (`pending`, `running`, `completed`, `failed`, `cancelled`) |
+| `job_type` | `JobType` | Filter by type (see `dgbit_api.db.models.JobType`) |
+| `limit` | int | Max rows (1-100, default 50) |
 
-**Response:**
+**Response:** a JSON array of job objects (the endpoint does not wrap them in a `{jobs, total}` envelope):
 
 ```json
-{
-    "jobs": [
-        {
-            "id": 1,
-            "uuid": "550e8400-e29b-41d4-a716-446655440000",
-            "job_type": "backtest",
-            "status": "completed",
-            "payload": {"symbol": "BTCUSDT", "limit": 1000},
-            "result": {"total_trades": 15, "win_rate": 0.6},
-            "created_at": "2024-01-15T10:30:00Z",
-            "completed_at": "2024-01-15T10:30:45Z"
-        }
-    ],
-    "total": 1
-}
+[
+    {
+        "id": 1,
+        "uuid": "550e8400-e29b-41d4-a716-446655440000",
+        "job_type": "backtest",
+        "status": "completed",
+        "payload": {"symbol": "BTCUSDT", "limit": 1000},
+        "result": {"total_trades": 15, "win_rate": 0.6},
+        "error": null,
+        "created_at": "2024-01-15T10:30:00",
+        "updated_at": "2024-01-15T10:30:45",
+        "started_at": "2024-01-15T10:30:01",
+        "completed_at": "2024-01-15T10:30:45"
+    }
+]
 ```
+
+There is also a `GET /api/jobs/stats` endpoint that returns the same `stats` block as `/api/health`.
 
 #### Get Job
 
@@ -159,10 +161,10 @@ GET /api/jobs/{uuid}
 
 #### Cancel Job
 
-Cancel a pending or running job.
+Cancel a pending or running job. Returns `400` if the job is not in `pending` or `running` status.
 
 ```http
-POST /api/jobs/{uuid}/cancel
+POST /api/jobs/{job_uuid}/cancel
 ```
 
 **Response:**
@@ -170,10 +172,11 @@ POST /api/jobs/{uuid}/cancel
 ```json
 {
     "job_id": "550e8400-e29b-41d4-a716-446655440000",
-    "status": "cancelled",
-    "message": "Job cancelled successfully"
+    "status": "cancelled"
 }
 ```
+
+Note: the route only marks the job row as cancelled in the database; it does not signal the worker.
 
 ---
 
@@ -181,56 +184,41 @@ POST /api/jobs/{uuid}/cancel
 
 #### Get Klines
 
-Fetch OHLCV candlestick data.
+Fetch OHLCV candlestick data via the data service.
 
 ```http
-GET /api/data/klines?symbol=BTCUSDT&interval=15&limit=100
+GET /api/data/klines?symbol=BTCUSDT&interval=1h&limit=100
 ```
 
 **Query Parameters:**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `symbol` | string | Yes | Trading pair (e.g., BTCUSDT) |
-| `interval` | string | No | Candle interval in minutes (default: 1) |
-| `limit` | integer | No | Number of candles (default: 100, max: 1000) |
+| `symbol` | string | No | Trading pair (default `BTCUSDT`) |
+| `interval` | string | No | Candle interval string (default `1h`) |
+| `limit` | integer | No | Number of candles (1-1000, default 100) |
+| `use_cache` | bool | No | Use cached data when available (default `true`) |
 
-**Response:**
+The response is whatever `DataServiceClient.get_klines(...)` returns from the data service over NNG; consult `dgbit_services.data` for the exact schema.
 
-```json
-{
-    "symbol": "BTCUSDT",
-    "interval": "15",
-    "data": [
-        {
-            "timestamp": "2024-01-15T10:00:00Z",
-            "open": 42150.50,
-            "high": 42200.00,
-            "low": 42100.00,
-            "close": 42180.25,
-            "volume": 125.5
-        }
-    ]
-}
-```
+There are two helper endpoints for cache management:
+
+- `GET /api/data/cache` returns the cache status.
+- `DELETE /api/data/cache` clears the cache.
 
 #### List Symbols
 
-Get available trading pairs.
-
 ```http
-GET /api/data/symbols
+GET /api/data/symbols?exchange=bybit
 ```
 
 **Response:**
 
 ```json
 {
-    "symbols": [
-        {"symbol": "BTCUSDT", "base": "BTC", "quote": "USDT"},
-        {"symbol": "ETHUSDT", "base": "ETH", "quote": "USDT"},
-        {"symbol": "SOLUSDT", "base": "SOL", "quote": "USDT"}
-    ]
+    "exchange": "bybit",
+    "symbols": ["BTCUSDT", "ETHUSDT", "..."],
+    "count": 123
 }
 ```
 
@@ -240,162 +228,55 @@ GET /api/data/symbols
 
 #### List Strategies
 
-Get all available trading strategies.
-
 ```http
 GET /api/strategies
 ```
 
-**Response:**
-
-```json
-{
-    "strategies": [
-        {
-            "name": "wavelet_reversal",
-            "description": "Wavelet-based reversal detection strategy",
-            "signal_type": "mean_reversion",
-            "parameters": {
-                "min_signal_threshold": {"type": "float", "default": 0.75},
-                "take_profit_pct": {"type": "float", "default": 0.02},
-                "stop_loss_pct": {"type": "float", "default": 0.01}
-            }
-        },
-        {
-            "name": "ma_crossover",
-            "description": "Moving average crossover strategy",
-            "signal_type": "trend_following",
-            "parameters": {
-                "fast_period": {"type": "int", "default": 12},
-                "slow_period": {"type": "int", "default": 26}
-            }
-        }
-    ]
-}
-```
+Proxies `StrategyClient.list_strategies()` over NNG; the response is the strategy service's payload (typically the strategy registry serialised by name). Built-in registered strategies are `wavelet_reversal`, `ma_crossover`, `rsi`, and `bollinger_bands`.
 
 #### Generate Signal
 
-Generate a trading signal using a specific strategy.
-
 ```http
-POST /api/strategies/{name}/signal
-Content-Type: application/json
+POST /api/strategies/{strategy_name}/signal?symbol=BTCUSDT
 ```
 
-**Request Body:**
-
-```json
-{
-    "symbol": "BTCUSDT",
-    "interval": "15",
-    "limit": 100,
-    "parameters": {
-        "min_signal_threshold": 0.8
-    }
-}
-```
-
-**Response:**
-
-```json
-{
-    "strategy": "wavelet_reversal",
-    "symbol": "BTCUSDT",
-    "timestamp": "2024-01-15T10:30:00Z",
-    "signal": {
-        "value": 0.82,
-        "direction": "long",
-        "confidence": "high"
-    },
-    "recommended_action": {
-        "action": "buy",
-        "entry_price": 42150.00,
-        "take_profit": 42993.00,
-        "stop_loss": 41728.50
-    }
-}
-```
+The endpoint accepts only the `symbol` query parameter; per-request parameter overrides are not supported through this route in the current build. The response is `StrategyClient.generate_signal(strategy_name, symbol)`'s output.
 
 ---
 
 ### Execution
 
-#### Place Order
+All execution endpoints forward to `ExecutionClient` over NNG; their response shapes are whatever the execution service returns. The accepted request bodies and query parameters defined in FastAPI are:
 
-Place a trading order.
+#### Place Order
 
 ```http
 POST /api/execution/orders
-Content-Type: application/json
 ```
 
-**Request Body:**
-
-```json
-{
-    "symbol": "BTCUSDT",
-    "side": "buy",
-    "order_type": "market",
-    "quantity": 0.001,
-    "stop_loss": 41000,
-    "take_profit": 44000
-}
-```
+**Request body fields:**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `symbol` | string | Yes | Trading pair |
-| `side` | string | Yes | Order side (buy, sell) |
-| `order_type` | string | Yes | Order type (market, limit) |
+| `side` | string | Yes | `"buy"` or `"sell"` |
 | `quantity` | number | Yes | Order quantity |
-| `price` | number | No | Limit price (required for limit orders) |
-| `stop_loss` | number | No | Stop loss price |
-| `take_profit` | number | No | Take profit price |
+| `order_type` | string | No | Defaults to `"market"` |
+| `price` | number | No | Limit price |
 
-**Response:**
+There is no `stop_loss` / `take_profit` field at this layer.
 
-```json
-{
-    "order_id": "12345678",
-    "symbol": "BTCUSDT",
-    "side": "buy",
-    "order_type": "market",
-    "quantity": 0.001,
-    "status": "filled",
-    "filled_price": 42150.00,
-    "created_at": "2024-01-15T10:30:00Z"
-}
-```
+#### Other endpoints
 
-#### Get Positions
-
-Get open positions.
-
-```http
-GET /api/execution/positions
-```
-
-**Response:**
-
-```json
-{
-    "positions": [
-        {
-            "symbol": "BTCUSDT",
-            "side": "long",
-            "quantity": 0.001,
-            "entry_price": 42150.00,
-            "current_price": 42300.00,
-            "unrealized_pnl": 0.15,
-            "unrealized_pnl_pct": 0.36,
-            "take_profit": 44000,
-            "stop_loss": 41000,
-            "opened_at": "2024-01-15T10:30:00Z"
-        }
-    ]
-}
-```
+| Endpoint | Method | Notes |
+|----------|--------|-------|
+| `/api/execution/orders` | GET | Optional `symbol`, `status` query params |
+| `/api/execution/orders/{order_id}` | GET | Fetch a single order |
+| `/api/execution/orders/{order_id}` | DELETE | Cancel an order; requires `symbol` query param |
+| `/api/execution/positions` | GET | Optional `symbol` filter |
+| `/api/execution/balance` | GET | Account balance |
+| `/api/execution/positions/close` | POST | Body: `{symbol, side}` (`side` defaults to `"both"`) |
+| `/api/execution/ping` | GET | Health-checks the execution service |
 
 ---
 
@@ -443,17 +324,8 @@ Content-Type: application/json
 
 ## Rate Limiting
 
-Currently, no rate limiting is implemented. For production, implement rate limiting via reverse proxy (nginx, traefik) or middleware.
+There is no built-in rate limiting. Apply it at a reverse proxy (nginx, traefik) or in custom middleware.
 
 ## Pagination
 
-Endpoints that return lists support pagination:
-
-```http
-GET /api/jobs?offset=0&limit=20
-```
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `offset` | integer | 0 | Number of items to skip |
-| `limit` | integer | 20 | Number of items to return |
+`GET /api/jobs` accepts a `limit` query parameter (1-100, default 50). There is no `offset` parameter in the current build.

@@ -241,14 +241,7 @@ How data moves through the dgbit system.
                     └─────────────┘     └─────────────┘
 ```
 
-Cache TTL by data type:
-
-| Data Type | TTL |
-|-----------|-----|
-| 1m candles | 60s |
-| 15m candles | 5m |
-| 1h candles | 15m |
-| Symbol list | 1h |
+Cache behaviour is configured in `dgbit_data.cache` and surfaced through the `use_cache` flag on `/api/data/klines`. TTLs and eviction policy are not currently exposed via configuration; consult the cache module for the active defaults.
 
 ## Error Propagation
 

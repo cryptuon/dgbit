@@ -120,39 +120,10 @@ Asynchronous publish-subscribe pattern for event distribution.
 ### Example
 
 ```python
-from dgbit_services.events import EventPublisher
-
-# Publisher
-publisher = EventPublisher("ipc:///tmp/dgbit_evt.ipc")
-await publisher.connect()
-
-await publisher.publish({
-    "type": "job.completed",
-    "timestamp": datetime.utcnow().isoformat(),
-    "payload": {
-        "job_id": "550e8400",
-        "status": "completed",
-    }
-})
+from dgbit_services import EventPublisher, EventSubscriber
 ```
 
-```python
-from dgbit_services.events import EventSubscriber
-
-# Subscriber
-subscriber = EventSubscriber("ipc:///tmp/dgbit_evt.ipc")
-await subscriber.connect()
-
-# Subscribe to specific topics
-await subscriber.subscribe("job.*")
-await subscriber.subscribe("trade.*")
-
-async for event in subscriber:
-    if event["type"] == "job.completed":
-        handle_job_complete(event["payload"])
-    elif event["type"] == "trade.entered":
-        handle_trade_enter(event["payload"])
-```
+`EventPublisher` and `EventSubscriber` are defined in `dgbit_services/__init__.py`. See that module for the current API; the related publish/dispatch helpers used by the API service live in `dgbit_services/events.py`.
 
 ### Topic Hierarchy
 
@@ -182,38 +153,15 @@ Work distribution pattern for load balancing across workers.
 - Balance data fetching
 - Parallel signal generation
 
-### Example
+### In the codebase
 
-```python
-from dgbit_services.jobs import JobProducer
+Job queue plumbing lives in `dgbit_services.jobs`:
 
-# Producer (pushes jobs)
-producer = JobProducer("ipc:///tmp/dgbit_queue.ipc")
-await producer.connect()
+- `JobQueue` enqueues jobs to NNG (PUSH/PULL pattern).
+- `JobWorker` pulls jobs and runs the registered handler.
+- `JobQueueService` packages both behind the service-base lifecycle.
 
-await producer.push({
-    "job_type": "backtest",
-    "job_uuid": "550e8400",
-    "payload": {...}
-})
-```
-
-```python
-from dgbit_services.jobs import JobConsumer
-
-# Consumer (pulls jobs)
-consumer = JobConsumer("ipc:///tmp/dgbit_queue.ipc")
-await consumer.connect()
-
-while True:
-    job = await consumer.pull()
-    
-    try:
-        result = process_job(job)
-        await mark_complete(job["job_uuid"], result)
-    except Exception as e:
-        await mark_failed(job["job_uuid"], str(e))
-```
+See `dgbit-api/src/dgbit_services/jobs.py` for the current method signatures.
 
 ### Load Balancing
 
@@ -298,21 +246,7 @@ async def process_with_dlq(job):
 
 ## Performance
 
-### Throughput
-
-| Pattern | Messages/sec |
-|---------|--------------|
-| REQ/REP | ~10,000 |
-| PUB/SUB | ~50,000 |
-| PUSH/PULL | ~30,000 |
-
-### Latency
-
-| Pattern | Avg Latency |
-|---------|-------------|
-| REQ/REP | < 1ms |
-| PUB/SUB | < 0.5ms |
-| PUSH/PULL | < 0.5ms |
+NNG benchmarks vary widely by message size, payload shape, and hardware. The dgbit codebase does not ship its own benchmark suite; refer to the [upstream nanomsg-next-generation docs](https://nng.nanomsg.org/) for representative numbers.
 
 ## Best Practices
 

@@ -49,75 +49,41 @@ BYBIT_TESTNET=false
 
 ### Basic Setup
 
+`RealtimeTrader` constructs its own `BybitDataFetcher` from the API credentials you pass. Its public surface is intentionally small:
+
 ```python
 from dgbit_core.trading.realtime_trader import RealtimeTrader
-from dgbit_core.trading.strategy import WaveletReversalStrategy
-from dgbit_core.data.data_fetcher import BybitDataFetcher
 
-# Initialize components
-fetcher = BybitDataFetcher(
-    api_key="your_key",
-    api_secret="your_secret",
-    testnet=True,  # Start with testnet!
-)
+trader = RealtimeTrader(api_key="your_key", api_secret="your_secret")
+```
 
-strategy = WaveletReversalStrategy(
-    min_signal_threshold=0.8,  # Higher threshold for live
-    take_profit_pct=0.02,
-    stop_loss_pct=0.01,
-)
+The internal `self.strategy` defaults to `TradingStrategy` (an alias for `WaveletReversalStrategy`). Swap it before calling `run()` if you need a different strategy:
 
-# Create trader
-trader = RealtimeTrader(
-    fetcher=fetcher,
-    strategy=strategy,
-    symbol="BTCUSDT",
-    position_size_pct=0.1,  # Risk 10% per trade
-)
+```python
+from dgbit_core.trading import RSIStrategy
+
+trader.strategy = RSIStrategy(period=14)
 ```
 
 ### Running the Trader
 
-```python
-import asyncio
-
-async def main():
-    # Start trading
-    await trader.start()
-    
-    try:
-        # Run for specified duration
-        await asyncio.sleep(3600)  # 1 hour
-    finally:
-        await trader.stop()
-
-asyncio.run(main())
-```
-
-### Position Management
+`RealtimeTrader.run(symbol)` is **synchronous**. It loads historical data, trains the strategy, subscribes to Bybit's WebSocket kline stream, and re-trains every 10 minutes:
 
 ```python
-# Check current positions
-positions = await trader.get_positions()
-for pos in positions:
-    print(f"{pos.symbol}: {pos.side} {pos.quantity} @ {pos.entry_price}")
-    print(f"  Unrealized PnL: {pos.unrealized_pnl}")
-
-# Close a position manually
-await trader.close_position("BTCUSDT")
-
-# Close all positions
-await trader.close_all_positions()
+trader.run("BTCUSDT")  # blocks; runs until interrupted
 ```
+
+There is no built-in async `start()` / `stop()` or `close_position()` helper today; manual position management goes through the underlying Bybit session or the REST API exposed by `dgbit-api`.
 
 ## Via the API
 
 ### Place Orders
 
+The `OrderRequest` body accepts `symbol`, `side`, `quantity`, `order_type`, and an optional `price`. There is no `stop_loss` or `take_profit` field on this endpoint:
+
 ```python
 import httpx
 
-# Market buy order
 response = httpx.post(
     "http://localhost:8000/api/execution/orders",
     json={
@@ -125,10 +91,9 @@ response = httpx.post(
         "side": "buy",
         "order_type": "market",
         "quantity": 0.001,
-    }
+    },
 )
 order = response.json()
-print(f"Order placed: {order['order_id']}")
 ```
 
 ### Monitor Positions
@@ -245,22 +210,7 @@ class RiskManager:
 
 ### Stop Loss Orders
 
-Always use stop losses:
-
-```python
-# Place order with stop loss
-response = httpx.post(
-    "http://localhost:8000/api/execution/orders",
-    json={
-        "symbol": "BTCUSDT",
-        "side": "buy",
-        "order_type": "market",
-        "quantity": 0.001,
-        "stop_loss": 49000,  # Stop loss price
-        "take_profit": 52000,  # Take profit price
-    }
-)
-```
+The `/api/execution/orders` endpoint does not currently accept `stop_loss` or `take_profit` fields. To bracket a position, submit the protective leg as a separate order via the execution service, or set TP/SL directly through `pybit.unified_trading.HTTP.place_order(..., takeProfit=..., stopLoss=...)`.
 
 ## Monitoring
 
@@ -324,18 +274,22 @@ Before going live:
 
 ## Emergency Procedures
 
-### Close All Positions
+### Close Positions
+
+There is no single "close all" endpoint. Close per-symbol with `/api/execution/positions/close`:
 
 ```bash
-# Via API
-curl -X POST http://localhost:8000/api/execution/close-all
+curl -X POST http://localhost:8000/api/execution/positions/close \
+    -H 'Content-Type: application/json' \
+    -d '{"symbol": "BTCUSDT", "side": "both"}'
+```
 
-# Via Bybit directly
-python -c "
+Or skip the API and cancel via Bybit directly:
+
+```python
 from pybit.unified_trading import HTTP
 session = HTTP(api_key='...', api_secret='...')
 session.cancel_all_orders(category='spot')
-"
 ```
 
 ### Stop the System

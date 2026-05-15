@@ -66,11 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 |---------|------|------------|
 | 0.1.0 | 2026-01-05 | Initial release |
 
-## Upgrade Guide
-
-### Upgrading to 0.2.0
-
-No breaking changes. Simply update:
+## Upgrading
 
 ```bash
 pip install --upgrade dgbit
@@ -83,3 +79,5 @@ docker pull cryptuon/dgbit:latest
 docker-compose pull
 docker-compose up -d
 ```
+
+The canonical changelog is [`CHANGELOG.md`](https://github.com/cryptuon/dgbit/blob/main/CHANGELOG.md) at the repo root; the table above is a mirror.

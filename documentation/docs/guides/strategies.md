@@ -1,111 +1,74 @@
 # Trading Strategies
 
-dgbit includes several built-in trading strategies and provides a framework for creating custom ones.
+dgbit ships four registered strategies and a framework for adding more.
+
+The base strategy class (`BaseStrategy`) and `WaveletReversalStrategy` live in `dgbit_core.trading.strategy`. The three example strategies (`MACrossoverStrategy`, `RSIStrategy`, `BollingerBandStrategy`) live in `dgbit_core.trading.examples` and are re-exported from `dgbit_core.trading`.
 
 ## Built-in Strategies
 
 ### Wavelet Reversal Strategy
 
-The flagship strategy uses Daubechies wavelet decomposition to detect potential trend reversals.
-
-**How it works:**
-
-1. Decomposes price data using wavelet transform
-2. Analyzes high-frequency detail coefficients
-3. Detects divergence indicating potential reversal
-4. Generates signal strength (0.0 to 1.0)
+Registry name: `wavelet_reversal`. `generate_signal()` delegates to `dgbit_core.models.predictor.PricePredictor`, which performs a Daubechies wavelet decomposition.
 
 ```python
 from dgbit_core.trading.strategy import WaveletReversalStrategy
 
+# Constructor signature: (min_signal_threshold, take_profit_pct, stop_loss_pct, **kwargs)
 strategy = WaveletReversalStrategy(
-    min_signal_threshold=0.75,  # Enter only on strong signals
-    take_profit_pct=0.02,       # 2% take profit
-    stop_loss_pct=0.01,         # 1% stop loss
-    wavelet_level=3,            # Decomposition level
+    min_signal_threshold=0.75,
+    take_profit_pct=0.002,
+    stop_loss_pct=0.005,
 )
 ```
 
-**Best for:** Range-bound markets, mean reversion
+Extra keyword arguments are stored on `self._extra_params` but are not consumed by the strategy itself.
 
 ---
 
 ### MA Crossover Strategy
 
-Classic moving average crossover strategy using fast and slow EMAs.
-
-**How it works:**
-
-1. Calculates fast EMA (e.g., 12 periods)
-2. Calculates slow EMA (e.g., 26 periods)
-3. Generates buy signal when fast crosses above slow
-4. Generates sell signal when fast crosses below slow
+Registry name: `ma_crossover`. Uses SMA, EMA, or WMA depending on `ma_type` (default `"sma"`). The signal is a normalised, clamped function of the percentage gap between fast and slow MAs (above 0.5 = fast above slow).
 
 ```python
-from dgbit_core.trading.strategy import MACrossoverStrategy
+from dgbit_core.trading import MACrossoverStrategy
 
 strategy = MACrossoverStrategy(
-    fast_period=12,
-    slow_period=26,
-    take_profit_pct=0.03,
-    stop_loss_pct=0.015,
+    fast_period=10,
+    slow_period=20,
+    ma_type="ema",   # one of: "sma", "ema", "wma"
 )
 ```
-
-**Best for:** Trending markets
 
 ---
 
 ### RSI Strategy
 
-Relative Strength Index momentum strategy.
-
-**How it works:**
-
-1. Calculates RSI over lookback period
-2. Buy signal when RSI < oversold threshold (e.g., 30)
-3. Sell signal when RSI > overbought threshold (e.g., 70)
+Registry name: `rsi`. Returns `0.0` when RSI <= `oversold`, `1.0` when RSI >= `overbought`, and a linear interpolation between them otherwise.
 
 ```python
-from dgbit_core.trading.strategy import RSIStrategy
+from dgbit_core.trading import RSIStrategy
 
 strategy = RSIStrategy(
     period=14,
-    oversold=30,
-    overbought=70,
-    take_profit_pct=0.025,
-    stop_loss_pct=0.012,
+    oversold=30.0,
+    overbought=70.0,
 )
 ```
-
-**Best for:** Range-bound markets, counter-trend trading
 
 ---
 
 ### Bollinger Bands Strategy
 
-Volatility-based breakout strategy.
-
-**How it works:**
-
-1. Calculates Bollinger Bands (middle, upper, lower)
-2. Buy signal when price touches lower band
-3. Sell signal when price touches upper band
-4. Can also trade breakouts above/below bands
+Registry name: `bollinger_bands`. Computes the close price's relative position within a `period`-SMA Bollinger Band (with `std_dev` standard deviations). The signal is the clamped ratio `(close - lower) / (upper - lower)`. There is **no** separate `breakout` mode in the current implementation.
 
 ```python
-from dgbit_core.trading.strategy import BollingerBandStrategy
+from dgbit_core.trading import BollingerBandStrategy
 
 strategy = BollingerBandStrategy(
     period=20,
-    num_std=2.0,
-    mode="mean_reversion",  # or "breakout"
-    take_profit_pct=0.02,
-    stop_loss_pct=0.01,
+    std_dev=2.0,
 )
 ```
-
-**Best for:** High volatility markets
 
 ## Using Strategies
 
@@ -116,39 +79,32 @@ from dgbit_core.backtesting import Backtester, BacktestConfig
 from dgbit_core.trading.strategy import WaveletReversalStrategy
 from dgbit_core.data.data_fetcher import BybitDataFetcher
 
-# Fetch data
-fetcher = BybitDataFetcher()
+fetcher = BybitDataFetcher(api_key="", api_secret="", testnet=True)
 data = fetcher.get_kline_data("BTCUSDT", interval="15", limit=1000)
 
-# Create backtester
 config = BacktestConfig(initial_capital=10000.0)
 backtester = Backtester(config=config)
 backtester.strategy = WaveletReversalStrategy()
 
-# Run backtest
 result = backtester.run(data)
 print(f"Win Rate: {result.metrics['win_rate']:.2%}")
 ```
 
 ### With the API
 
+The `/api/strategies/{strategy_name}/signal` endpoint accepts only a `symbol` query parameter and proxies the request to the strategy service over NNG:
+
 ```python
 import httpx
 
-# Generate a signal
 response = httpx.post(
     "http://localhost:8000/api/strategies/wavelet_reversal/signal",
-    json={
-        "symbol": "BTCUSDT",
-        "interval": "15",
-        "limit": 100,
-    }
+    params={"symbol": "BTCUSDT"},
 )
-
-signal = response.json()
-print(f"Signal strength: {signal['value']}")
-print(f"Direction: {signal['direction']}")
+print(response.json())
 ```
+
+The response shape is whatever the strategy service returns over the bus; consult `dgbit_services.strategy` for the current schema.
 
 ### Strategy Registry
 
@@ -171,38 +127,29 @@ strategy = strategy_registry.create(
 
 ## Strategy Comparison
 
-| Strategy | Type | Best Market | Risk Level |
-|----------|------|-------------|------------|
-| Wavelet Reversal | Mean Reversion | Range-bound | Medium |
-| MA Crossover | Trend Following | Trending | Low |
-| RSI | Momentum | Range-bound | Medium |
-| Bollinger Bands | Volatility | High Volatility | Medium-High |
+| Strategy | `SignalType` | Default direction | Notes |
+|----------|--------------|-------------------|-------|
+| Wavelet Reversal | `REVERSAL` | `LONG` | Wraps `PricePredictor` |
+| MA Crossover | `MOMENTUM` | `LONG` | Configurable MA type |
+| RSI | `MEAN_REVERSION` | `LONG` | Returns 0/1 at thresholds |
+| Bollinger Bands | `BREAKOUT` | `BOTH` | Reports position within bands |
 
 ## Combining Strategies
 
-You can combine signals from multiple strategies:
+You can combine signals from multiple strategies manually:
 
 ```python
-from dgbit_core.trading.strategy import (
-    WaveletReversalStrategy,
-    RSIStrategy,
-    strategy_registry,
-)
+from dgbit_core.trading import WaveletReversalStrategy, RSIStrategy
 
-# Create strategies
 wavelet = WaveletReversalStrategy()
 rsi = RSIStrategy()
 
-# Generate signals
 wavelet_signal = wavelet.generate_signal(data)
 rsi_signal = rsi.generate_signal(data)
 
-# Combine signals (example: average)
+# Note: RSI emits 0.0 at oversold and 1.0 at overbought, so the
+# directional meaning of "agreement" depends on the strategy semantics.
 combined_signal = (wavelet_signal + rsi_signal) / 2
-
-# Or require agreement
-if wavelet_signal > 0.7 and rsi_signal > 0.7:
-    print("Strong buy signal from both strategies")
 ```
 
 ## Next Steps

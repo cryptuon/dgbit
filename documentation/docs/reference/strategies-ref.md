@@ -1,256 +1,131 @@
 # Built-in Strategies Reference
 
-Detailed reference for all built-in trading strategies.
+Reference for the four strategies that register themselves with `strategy_registry` on import.
+
+`WaveletReversalStrategy` is defined in `dgbit_core.trading.strategy`. The other three live in `dgbit_core.trading.examples` and are re-exported by `dgbit_core.trading`. Registration happens at module import time, so a single `import dgbit_core.trading` is enough to populate the registry with all four entries.
 
 ## Wavelet Reversal Strategy
 
-**Name:** `wavelet_reversal`  
-**Type:** Mean Reversion  
-**Class:** `WaveletReversalStrategy`
+- Registry name: `wavelet_reversal`
+- Class: `WaveletReversalStrategy`
+- `metadata.signal_type`: `SignalType.REVERSAL`
+- `metadata.default_direction`: `TradeDirection.LONG`
 
-### Description
-
-Uses Daubechies wavelet decomposition to detect potential trend reversals. The strategy analyzes high-frequency detail coefficients to identify divergence patterns that often precede price reversals.
-
-### Parameters
-
-| Parameter | Type | Default | Range | Description |
-|-----------|------|---------|-------|-------------|
-| `min_signal_threshold` | float | `0.75` | 0.5-0.95 | Minimum signal strength to enter |
-| `take_profit_pct` | float | `0.02` | 0.005-0.1 | Take profit percentage (2%) |
-| `stop_loss_pct` | float | `0.01` | 0.003-0.05 | Stop loss percentage (1%) |
-| `wavelet_level` | int | `3` | 1-5 | Wavelet decomposition level |
-| `lookback_period` | int | `20` | 10-100 | Candles for analysis |
-
-### Signal Logic
-
-1. Decompose price series using Daubechies wavelet (db4)
-2. Extract detail coefficients at specified level
-3. Calculate divergence between price and wavelet reconstruction
-4. Normalize to probability (0.0 to 1.0)
-
-### Best Conditions
-
-- Range-bound markets
-- Low to medium volatility
-- Sufficient liquidity
-
-### Example
+### Constructor
 
 ```python
-from dgbit_core.trading.strategy import WaveletReversalStrategy
-
-strategy = WaveletReversalStrategy(
-    min_signal_threshold=0.80,
-    take_profit_pct=0.015,
-    stop_loss_pct=0.008,
-    wavelet_level=3,
+WaveletReversalStrategy(
+    min_signal_threshold: float = 0.75,
+    take_profit_pct: float = 0.002,
+    stop_loss_pct: float = 0.005,
+    **kwargs,
 )
 ```
 
----
+### Signal logic
+
+`generate_signal(data)` calls `PricePredictor().predict(data)`. The predictor:
+
+1. Normalises the last 60 closes.
+2. Decomposes them with the `db1` wavelet at level 3 (`pywt.wavedec`).
+3. Combines the latest approximation slope and the share of detail energy in the highest-frequency band into a reversal probability.
+
+`train()` is a no-op.
 
 ## MA Crossover Strategy
 
-**Name:** `ma_crossover`  
-**Type:** Trend Following  
-**Class:** `MACrossoverStrategy`
+- Registry name: `ma_crossover`
+- Class: `MACrossoverStrategy`
+- `metadata.signal_type`: `SignalType.MOMENTUM`
 
-### Description
-
-Classic moving average crossover strategy using exponential moving averages (EMA). Generates buy signals when fast EMA crosses above slow EMA, sell signals on the opposite crossover.
-
-### Parameters
-
-| Parameter | Type | Default | Range | Description |
-|-----------|------|---------|-------|-------------|
-| `fast_period` | int | `12` | 5-50 | Fast EMA period |
-| `slow_period` | int | `26` | 20-200 | Slow EMA period |
-| `take_profit_pct` | float | `0.03` | 0.01-0.1 | Take profit percentage |
-| `stop_loss_pct` | float | `0.015` | 0.005-0.05 | Stop loss percentage |
-
-### Signal Logic
-
-1. Calculate fast EMA (e.g., 12-period)
-2. Calculate slow EMA (e.g., 26-period)
-3. Buy signal: fast crosses above slow
-4. Sell signal: fast crosses below slow
-5. Signal strength based on crossover magnitude
-
-### Best Conditions
-
-- Trending markets
-- Clear directional moves
-- Lower timeframes for faster signals
-
-### Example
+### Constructor
 
 ```python
-from dgbit_core.trading.strategy import MACrossoverStrategy
-
-strategy = MACrossoverStrategy(
-    fast_period=8,
-    slow_period=21,
-    take_profit_pct=0.025,
-    stop_loss_pct=0.012,
+MACrossoverStrategy(
+    fast_period: int = 10,
+    slow_period: int = 20,
+    ma_type: str = "sma",   # "sma", "ema", or "wma"
+    **kwargs,
 )
 ```
 
----
+`metadata.parameters` declares ranges `fast_period: [2, 100]` and `slow_period: [5, 200]`.
+
+### Signal logic
+
+1. Compute fast and slow moving averages using `ma_type`.
+2. Normalise the relative gap: `diff = (fast - slow) / slow`.
+3. Map to `[0, 1]` with `signal = clamp(0.5 + diff * 10, 0.0, 1.0)`.
+
+`train()` is a no-op.
 
 ## RSI Strategy
 
-**Name:** `rsi`  
-**Type:** Momentum  
-**Class:** `RSIStrategy`
+- Registry name: `rsi`
+- Class: `RSIStrategy`
+- `metadata.signal_type`: `SignalType.MEAN_REVERSION`
 
-### Description
-
-Relative Strength Index momentum strategy. Identifies overbought and oversold conditions to generate counter-trend signals.
-
-### Parameters
-
-| Parameter | Type | Default | Range | Description |
-|-----------|------|---------|-------|-------------|
-| `period` | int | `14` | 5-30 | RSI calculation period |
-| `oversold` | int | `30` | 10-40 | Oversold threshold (buy) |
-| `overbought` | int | `70` | 60-90 | Overbought threshold (sell) |
-| `take_profit_pct` | float | `0.025` | 0.01-0.05 | Take profit percentage |
-| `stop_loss_pct` | float | `0.012` | 0.005-0.03 | Stop loss percentage |
-
-### Signal Logic
-
-1. Calculate RSI over lookback period
-2. RSI < oversold (30): Buy signal
-3. RSI > overbought (70): Sell signal
-4. Signal strength inversely proportional to RSI extremity
-
-### Best Conditions
-
-- Range-bound markets
-- After extended moves (mean reversion expected)
-- Higher timeframes for more reliable signals
-
-### Example
+### Constructor
 
 ```python
-from dgbit_core.trading.strategy import RSIStrategy
-
-strategy = RSIStrategy(
-    period=14,
-    oversold=25,
-    overbought=75,
-    take_profit_pct=0.02,
-    stop_loss_pct=0.01,
+RSIStrategy(
+    period: int = 14,
+    oversold: float = 30.0,
+    overbought: float = 70.0,
+    **kwargs,
 )
 ```
 
----
+### Signal logic
+
+1. Compute RSI over `period` bars.
+2. If `rsi <= oversold` return `0.0`; if `rsi >= overbought` return `1.0`; otherwise linearly interpolate between them.
+
+So lower values mean "oversold / buy candidate" and higher values mean "overbought / sell candidate" — the opposite convention from the wavelet and Bollinger strategies. Compose accordingly.
 
 ## Bollinger Bands Strategy
 
-**Name:** `bollinger_bands`  
-**Type:** Volatility  
-**Class:** `BollingerBandStrategy`
+- Registry name: `bollinger_bands`
+- Class: `BollingerBandStrategy`
+- `metadata.signal_type`: `SignalType.BREAKOUT`
+- `metadata.default_direction`: `TradeDirection.BOTH`
 
-### Description
-
-Uses Bollinger Bands to identify overbought/oversold conditions or breakout opportunities. Supports both mean reversion and breakout trading modes.
-
-### Parameters
-
-| Parameter | Type | Default | Range | Description |
-|-----------|------|---------|-------|-------------|
-| `period` | int | `20` | 10-50 | SMA period for middle band |
-| `num_std` | float | `2.0` | 1.5-3.0 | Standard deviations for bands |
-| `mode` | string | `mean_reversion` | - | Trading mode |
-| `take_profit_pct` | float | `0.02` | 0.01-0.05 | Take profit percentage |
-| `stop_loss_pct` | float | `0.01` | 0.005-0.03 | Stop loss percentage |
-
-### Modes
-
-**Mean Reversion (`mean_reversion`):**
-- Buy when price touches lower band
-- Sell when price touches upper band
-- Targets middle band
-
-**Breakout (`breakout`):**
-- Buy when price breaks above upper band
-- Sell when price breaks below lower band
-- Targets continuation
-
-### Signal Logic
-
-1. Calculate 20-period SMA (middle band)
-2. Calculate upper/lower bands (SMA ± 2 std)
-3. Generate signals based on band touches/breaks
-4. Signal strength based on distance from band
-
-### Best Conditions
-
-- Mean reversion: Range-bound, stable volatility
-- Breakout: Consolidation before expansion
-- Higher timeframes more reliable
-
-### Example
+### Constructor
 
 ```python
-from dgbit_core.trading.strategy import BollingerBandStrategy
-
-# Mean reversion mode
-strategy = BollingerBandStrategy(
-    period=20,
-    num_std=2.0,
-    mode="mean_reversion",
-    take_profit_pct=0.02,
-    stop_loss_pct=0.01,
-)
-
-# Breakout mode
-strategy = BollingerBandStrategy(
-    period=20,
-    num_std=2.5,
-    mode="breakout",
-    take_profit_pct=0.04,
-    stop_loss_pct=0.02,
+BollingerBandStrategy(
+    period: int = 20,
+    std_dev: float = 2.0,
+    **kwargs,
 )
 ```
 
----
+The keyword is `std_dev`, not `num_std`. There is **no** `mode` parameter; the strategy reports the close's relative position within the bands.
 
-## Strategy Comparison
+### Signal logic
 
-| Strategy | Type | Win Rate* | Avg Return* | Best Market |
-|----------|------|-----------|-------------|-------------|
-| Wavelet Reversal | Mean Reversion | 55-65% | 0.8-1.2% | Range-bound |
-| MA Crossover | Trend Following | 40-50% | 1.5-2.5% | Trending |
-| RSI | Momentum | 50-60% | 0.6-1.0% | Range-bound |
-| Bollinger Bands | Volatility | 45-55% | 1.0-1.8% | Variable |
+1. Compute the `period`-SMA (middle band) and rolling standard deviation.
+2. Upper band = middle + `std_dev * std`, lower band = middle - `std_dev * std`.
+3. Signal = clamp(`(close - lower) / (upper - lower)`, 0.0, 1.0); equal upper/lower bands return `0.5`.
 
-*Approximate values; actual performance varies by market conditions.
-
-## Combining Strategies
-
-Example of combining multiple strategies:
+## Registry helpers
 
 ```python
 from dgbit_core.trading.strategy import (
-    WaveletReversalStrategy,
-    RSIStrategy,
+    strategy_registry,
+    create_strategy,
+    list_available_strategies,
 )
 
-wavelet = WaveletReversalStrategy()
-rsi = RSIStrategy()
+# All four built-ins after `import dgbit_core.trading`
+names = list(list_available_strategies().keys())
 
-def combined_signal(data):
-    w_signal = wavelet.generate_signal(data)
-    r_signal = rsi.generate_signal(data)
-    
-    # Both must agree
-    if w_signal > 0.7 and r_signal > 0.7:
-        return (w_signal + r_signal) / 2
-    elif w_signal < 0.3 and r_signal < 0.3:
-        return (w_signal + r_signal) / 2
-    else:
-        return 0.5  # No clear signal
+strategy = create_strategy("ma_crossover", fast_period=8, slow_period=21)
+schema = strategy_registry.get_params_schema("rsi")
 ```
+
+`strategy_registry.register(cls)` raises `ValueError` if the metadata name is already taken.
+
+## Combining strategies
+
+There is no built-in composite strategy. Compose manually by calling `generate_signal` on each instance and combining the results. Note the inverted convention of the RSI strategy when doing so.

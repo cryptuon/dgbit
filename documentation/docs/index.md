@@ -1,14 +1,16 @@
 # dgbit Documentation
 
-**Professional Algorithmic Trading Framework for Bybit**
+**Algorithmic Trading Framework for Bybit**
 
-Build, backtest, and deploy crypto trading strategies with confidence.
+Backtest and execute crypto trading strategies against Bybit markets.
 
 ---
 
 ## What is dgbit?
 
-dgbit is a production-ready algorithmic trading framework designed for cryptocurrency traders and developers. It provides everything you need to research, backtest, and execute trading strategies on Bybit spot markets.
+dgbit is an algorithmic trading framework that bundles a strategy framework, an in-memory backtester, a FastAPI service, an NNG-based service bus, and a Vue 3 dashboard. The shipped data fetcher and live trader integrate with Bybit via the `pybit` SDK. Bybit's spot category is the default; the underlying `BybitAdapter` also accepts `linear` (USDT-M perpetuals) and `inverse` categories.
+
+The `dgbit_data.adapters` package additionally contains scaffolding for Binance, Coinbase, and OKX (via `ccxt`), but the runtime data fetcher (`BybitDataFetcher`) and `RealtimeTrader` are Bybit-only today.
 
 <div class="grid cards" markdown>
 
@@ -48,29 +50,31 @@ dgbit is a production-ready algorithmic trading framework designed for cryptocur
 
 ## Key Features
 
-### Multi-Strategy Support
-dgbit includes several built-in trading strategies and makes it easy to create your own:
+### Built-in Strategies
 
-- **Wavelet Reversal** - Daubechies wavelet decomposition for trend reversal detection
-- **MA Crossover** - Classic moving average crossover signals
-- **RSI** - Relative Strength Index momentum strategy
-- **Bollinger Bands** - Volatility-based breakout detection
+Four strategies register themselves with the global `strategy_registry` at import time:
 
-### Comprehensive Backtesting
-Test your strategies against historical data before risking real capital:
+- **`wavelet_reversal`** (`WaveletReversalStrategy`) - delegates to `PricePredictor`, which uses a Daubechies wavelet decomposition
+- **`ma_crossover`** (`MACrossoverStrategy`) - SMA/EMA/WMA crossover, configurable via `ma_type`
+- **`rsi`** (`RSIStrategy`) - RSI overbought/oversold thresholding
+- **`bollinger_bands`** (`BollingerBandStrategy`) - position of the close within the bands, no separate breakout mode
 
-- In-memory simulation engine
-- Detailed performance metrics (win rate, drawdown, profit factor)
-- Interactive Plotly HTML reports
-- Configurable transaction fees and slippage
+All four inherit from `BaseStrategy` and emit a signal in the `[0.0, 1.0]` range.
 
-### Production-Ready Architecture
-Built for real-world deployment:
+### Backtesting
 
-- FastAPI REST API with WebSocket support
-- NNG-based service bus for scalable execution
-- Vue 3 web dashboard for monitoring
-- Docker-ready with multi-container orchestration
+- In-memory simulation in `dgbit_core.backtesting.Backtester`
+- Train/test split (`train_split`, default `0.7`)
+- Metrics: `total_trades`, `win_rate`, `total_return`, `max_drawdown`, `profit_factor`, `avg_return`, `avg_duration`, `final_capital`, `wins`, `losses`
+- Interactive Plotly HTML report via `Backtester.plot_results(...)`
+- Configurable `transaction_fee` (applied on both entry and exit); slippage is not modelled
+
+### Service Architecture
+
+- FastAPI app exposing endpoints under `/api`
+- NNG (`pynng`) command/event/data sockets, addresses configured via env vars
+- Vue 3 dashboard in `dgbit-ui/`
+- `docker-compose.yml` with `api`, `backtest-worker`, `ui`, and `data-service` services
 
 ## Installation
 
@@ -101,11 +105,10 @@ from dgbit_core.backtesting import Backtester, BacktestConfig
 from dgbit_core.trading.strategy import WaveletReversalStrategy
 from dgbit_core.data.data_fetcher import BybitDataFetcher
 
-# Fetch historical data
-fetcher = BybitDataFetcher()
+# BybitDataFetcher requires Bybit API credentials (use testnet=True for read-only public data)
+fetcher = BybitDataFetcher(api_key="", api_secret="", testnet=True)
 data = fetcher.get_kline_data("BTCUSDT", interval="15", limit=1000)
 
-# Run backtest
 backtester = Backtester(config=BacktestConfig(initial_capital=10000.0))
 backtester.strategy = WaveletReversalStrategy()
 result = backtester.run(data)

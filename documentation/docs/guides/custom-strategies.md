@@ -4,50 +4,15 @@ Learn how to build your own trading strategies with dgbit's strategy framework.
 
 ## Strategy Architecture
 
-All strategies inherit from `BaseStrategy` and implement key methods:
+All strategies inherit from `BaseStrategy` (defined in `dgbit_core.trading.strategy`). The framework exposes:
 
-```python
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from enum import Enum
-import pandas as pd
+- `SignalType` enum with values: `REVERSAL`, `MOMENTUM`, `MEAN_REVERSION`, `BREAKOUT`, `CUSTOM`.
+- `TradeDirection` enum with values: `LONG`, `SHORT`, `BOTH`.
+- `StrategyMetadata` dataclass with fields `name`, `description`, `author`, `version`, `signal_type`, `default_direction`, `parameters`, and `requires_training`.
 
-class SignalType(Enum):
-    MOMENTUM = "momentum"
-    MEAN_REVERSION = "mean_reversion"
-    TREND_FOLLOWING = "trend_following"
-    VOLATILITY = "volatility"
-    HYBRID = "hybrid"
+`BaseStrategy` provides concrete implementations of `should_enter`, `calculate_exit_prices`, `calculate_position_size`, and `validate_market_data`. Subclasses must implement `generate_signal(data) -> float` and may override `train(data)`.
 
-@dataclass
-class StrategyMetadata:
-    name: str
-    description: str
-    author: str
-    version: str
-    signal_type: SignalType
-    parameters: dict
-
-class BaseStrategy(ABC):
-    metadata: StrategyMetadata
-    
-    @abstractmethod
-    def generate_signal(self, data: pd.DataFrame) -> float:
-        """Generate trading signal from 0.0 (strong sell) to 1.0 (strong buy)."""
-        pass
-    
-    def train(self, data: pd.DataFrame) -> None:
-        """Optional: Train strategy on historical data."""
-        pass
-    
-    def should_enter(self, data: pd.DataFrame) -> tuple[bool, float, str]:
-        """Determine if should enter a position."""
-        pass
-    
-    def calculate_exit_prices(self, entry_price: float, direction: str) -> tuple[float, float]:
-        """Calculate take profit and stop loss prices."""
-        pass
-```
+The base constructor accepts `min_signal_threshold`, `take_profit_pct`, `stop_loss_pct`, and `position_size_pct`. Any subclass that adds its own constructor parameters should call `super().__init__(**kwargs)` to keep these in sync.
 
 ## Creating a Simple Strategy
 
@@ -76,30 +41,26 @@ class MACDStrategy(BaseStrategy):
         description="MACD crossover strategy",
         author="Your Name",
         version="1.0.0",
-        signal_type=SignalType.TREND_FOLLOWING,
+        signal_type=SignalType.MOMENTUM,
+        default_direction=TradeDirection.LONG,
         parameters={
-            "fast_period": {"type": "int", "default": 12, "min": 5, "max": 50},
-            "slow_period": {"type": "int", "default": 26, "min": 10, "max": 100},
-            "signal_period": {"type": "int", "default": 9, "min": 3, "max": 20},
-            "take_profit_pct": {"type": "float", "default": 0.02},
-            "stop_loss_pct": {"type": "float", "default": 0.01},
+            "fast_period": {"type": "int", "default": 12, "range": [5, 50]},
+            "slow_period": {"type": "int", "default": 26, "range": [10, 100]},
+            "signal_period": {"type": "int", "default": 9, "range": [3, 20]},
         },
     )
-    
+
     def __init__(
         self,
         fast_period: int = 12,
         slow_period: int = 26,
         signal_period: int = 9,
-        take_profit_pct: float = 0.02,
-        stop_loss_pct: float = 0.01,
         **kwargs,
     ):
+        super().__init__(**kwargs)
         self.fast_period = fast_period
         self.slow_period = slow_period
         self.signal_period = signal_period
-        self.take_profit_pct = take_profit_pct
-        self.stop_loss_pct = stop_loss_pct
     
     def _calculate_ema(self, data: pd.Series, period: int) -> pd.Series:
         """Calculate Exponential Moving Average."""
@@ -214,14 +175,16 @@ class MLStrategy(BaseStrategy):
         description="Random Forest classifier strategy",
         author="Your Name",
         version="1.0.0",
-        signal_type=SignalType.HYBRID,
+        signal_type=SignalType.CUSTOM,
+        requires_training=True,
         parameters={
             "lookback": {"type": "int", "default": 20},
             "n_estimators": {"type": "int", "default": 100},
         },
     )
-    
+
     def __init__(self, lookback: int = 20, n_estimators: int = 100, **kwargs):
+        super().__init__(**kwargs)
         self.lookback = lookback
         self.n_estimators = n_estimators
         self.model = RandomForestClassifier(n_estimators=n_estimators)
@@ -301,13 +264,12 @@ class MultiTimeframeStrategy(BaseStrategy):
         description="Multi-timeframe trend alignment strategy",
         author="Your Name",
         version="1.0.0",
-        signal_type=SignalType.TREND_FOLLOWING,
+        signal_type=SignalType.MOMENTUM,
         parameters={},
     )
-    
+
     def __init__(self, **kwargs):
-        self.take_profit_pct = kwargs.get('take_profit_pct', 0.02)
-        self.stop_loss_pct = kwargs.get('stop_loss_pct', 0.01)
+        super().__init__(**kwargs)
     
     def _resample_to_higher_tf(self, data: pd.DataFrame, factor: int) -> pd.DataFrame:
         """Resample data to higher timeframe."""
@@ -406,15 +368,17 @@ metadata = StrategyMetadata(
 
 ```python
 import pytest
-from dgbit_core.trading.strategy import MACDStrategy
+# MACDStrategy is the custom class defined above; adjust the import to wherever
+# you placed it.
+from my_strategies import MACDStrategy
 
 def test_macd_signal_range():
     strategy = MACDStrategy()
     # Create sample data
     data = create_sample_data(100)
-    
+
     signal = strategy.generate_signal(data)
-    
+
     assert 0.0 <= signal <= 1.0
 
 def test_macd_insufficient_data():

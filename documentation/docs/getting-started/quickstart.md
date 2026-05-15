@@ -19,19 +19,23 @@ cd my-trading-project
 ```python
 from dgbit_core.data.data_fetcher import BybitDataFetcher
 
-# Create a data fetcher (no API keys needed for public data)
-fetcher = BybitDataFetcher()
+# BybitDataFetcher requires api_key and api_secret arguments; for public kline
+# endpoints they may be empty strings. Set testnet=True to hit the Bybit testnet.
+fetcher = BybitDataFetcher(api_key="", api_secret="", testnet=True)
 
-# Fetch 1000 candles of 15-minute BTCUSDT data
+# Fetch up to ~1000 candles of 15-minute BTCUSDT data
+# Bybit caps `limit` at 1000 per request.
 data = fetcher.get_kline_data(
     symbol="BTCUSDT",
     interval="15",  # 15 minutes
-    limit=1000
+    limit=1000,
 )
 
 print(f"Fetched {len(data)} candles")
 print(data.head())
 ```
+
+The returned DataFrame includes the raw OHLCV columns (`timestamp`, `open`, `high`, `low`, `close`, `volume`, `turnover`) plus a few engineered features (`price_change`, `volume_change`, `rolling_volatility`, `rolling_volume`).
 
 ## Step 3: Run a Backtest
 
@@ -68,14 +72,15 @@ print(f"Profit Factor: {result.metrics['profit_factor']:.2f}")
 
 ## Step 4: Generate a Report
 
+Reports are *not* written automatically; call `Backtester.plot_results(...)` to render the Plotly HTML files:
+
 ```python
-# The backtester automatically generates an HTML report
-# Check the 'reports' directory
-import os
-print(f"Report saved to: {os.path.abspath('reports/')}")
+files = backtester.plot_results(data, result)
+print(f"Chart: {files['chart']}")
+print(f"Metrics: {files['metrics']}")
 ```
 
-Open the generated HTML file in your browser to see interactive charts.
+The output directory defaults to `config.report_dir` (default `reports`).
 
 ## Step 5: Start the API Server
 
@@ -133,7 +138,7 @@ from dgbit_core.data.data_fetcher import BybitDataFetcher
 def main():
     # Fetch data
     print("Fetching historical data...")
-    fetcher = BybitDataFetcher()
+    fetcher = BybitDataFetcher(api_key="", api_secret="", testnet=True)
     data = fetcher.get_kline_data("BTCUSDT", interval="15", limit=1000)
     print(f"Fetched {len(data)} candles from {data['timestamp'].min()} to {data['timestamp'].max()}")
     
@@ -165,7 +170,7 @@ def main():
     print(f"Initial Capital: ${config.initial_capital:,.2f}")
     print("-" * 50)
     print(f"Total Trades: {result.metrics['total_trades']}")
-    print(f"Winning Trades: {result.metrics.get('winning_trades', 'N/A')}")
+    print(f"Winning Trades: {result.metrics.get('wins', 'N/A')}")
     print(f"Win Rate: {result.metrics['win_rate']:.2%}")
     print(f"Avg Return per Trade: {result.metrics['avg_return']:.2%}")
     print("-" * 50)

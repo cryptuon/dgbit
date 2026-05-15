@@ -56,25 +56,53 @@ LOG_LEVEL=INFO
 
 ### docker-compose.yml
 
-The default configuration:
+The shipped `docker-compose.yml` defines four services. `api` and `backtest-worker` start by default; `ui` and `data-service` are behind the `full` profile.
 
 ```yaml
 services:
   api:
-    build: .
+    image: cryptuon/dgbit-api:latest
     ports:
       - "8000:8000"
     environment:
       - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - NNG_COMMAND_ADDRESS=ipc:///tmp/dgbit_cmd.ipc
+      - NNG_EVENT_ADDRESS=ipc:///tmp/dgbit_evt.ipc
+      - BYBIT_API_KEY=${BYBIT_API_KEY:-}
+      - BYBIT_API_SECRET=${BYBIT_API_SECRET:-}
+      - BYBIT_TESTNET=${BYBIT_TESTNET:-true}
     volumes:
       - dgbit-db:/app/db
       - dgbit-reports:/app/reports
+      - dgbit-logs:/app/logs
+      - dgbit-ipc:/tmp
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  backtest-worker:
+    image: cryptuon/dgbit-api:latest
+    command: ["python", "-m", "dgbit_api.workers.backtest_runner"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+  ui:
+    profiles: ["full"]
+    build: ./dgbit-ui
+    ports: ["3000:3000"]
+
+  data-service:
+    profiles: ["full"]
+    command: ["python", "-m", "dgbit_data.service"]
 ```
+
+Refer to the root `docker-compose.yml` for the authoritative version.
 
 ## Building Images
 
