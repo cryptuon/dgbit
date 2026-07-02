@@ -1,12 +1,12 @@
 site_name: dgbit Documentation
 site_url: https://docs.cryptuon.com/dgbit/
 site_description: Algorithmic trading framework for Bybit - backtest and execute crypto trading strategies
-site_author: Dipankar Sarkar
+site_author: Cryptuon Research
 repo_name: cryptuon/dgbit
 repo_url: https://github.com/cryptuon/dgbit
 edit_uri: edit/main/documentation/docs/
 
-copyright: Copyright &copy; 2026 Dipankar Sarkar
+copyright: Copyright &copy; 2026 Cryptuon Research
 
 theme:
   name: material
@@ -124,6 +124,7 @@ nav:
     - Changelog: reference/changelog.md
 
 extra:
+  homepage: https://dgbit.cryptuon.com/
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/cryptuon/dgbit

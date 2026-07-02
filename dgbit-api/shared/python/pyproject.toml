@@ -2,7 +2,7 @@
 name = "dgbit-core"
 version = "0.1.0"
 description = "Core trading logic for dgbit"
-authors = ["dgbit"]
+authors = ["Cryptuon Research <contact@cryptuon.com>"]
 packages = [{ include = "dgbit_core" }]
 
 [tool.poetry.dependencies]

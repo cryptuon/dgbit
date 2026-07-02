@@ -2,7 +2,7 @@
 name = "dgbit-api"
 version = "0.1.0"
 description = "FastAPI service and background workers for the dgbit platform"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Cryptuon Research <contact@cryptuon.com>"]
 packages = [
     { include = "dgbit_api", from = "src" },
     { include = "dgbit_data", from = "src" },

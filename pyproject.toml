@@ -2,7 +2,7 @@
 name = "dgbit"
 version = "0.1.0"
 description = "Professional algorithmic trading framework for Bybit - backtest, execute, and monitor crypto trading strategies"
-authors = [{name = "Dipankar Sarkar", email = "me@dipankar.name"}]
+authors = [{name = "Cryptuon Research", email = "contact@cryptuon.com"}]
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
@@ -67,7 +67,7 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/cryptuon/dgbit"
+Homepage = "https://dgbit.cryptuon.com/"
 Documentation = "https://docs.cryptuon.com/dgbit"
 Repository = "https://github.com/cryptuon/dgbit"
 Issues = "https://github.com/cryptuon/dgbit/issues"

@@ -24,6 +24,8 @@
   <a href="https://github.com/cryptuon/dgbit/issues">Issues</a>
 </p>
 
+**[🌐 Site](https://dgbit.cryptuon.com/) · [📚 Docs](https://docs.cryptuon.com/dgbit/) · [📦 PyPI package](https://pypi.org/project/dgbit/) · [🔬 Cryptuon Research](https://github.com/cryptuon)**
+
 ---
 
 ## Why dgbit?
@@ -302,6 +304,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Disclaimer
 
 **Trading cryptocurrencies involves significant risk.** This software is provided for educational and research purposes only. Past performance does not guarantee future results. Always test strategies thoroughly with paper trading before using real funds. The authors are not responsible for any financial losses incurred while using this software.
+
+---
+
+## Part of Cryptuon Research
+
+`dgbit` is one of [20 open-source blockchain-infrastructure projects](https://www.cryptuon.com/projects) from **[Cryptuon Research](https://www.cryptuon.com)** — blockchain theory, shipped as protocols.
+
+**Related projects:** [PolyBot](https://polybot.cryptuon.com/) · [Moby Market](https://mobymarket.cryptuon.com/) · [Mentat](https://mentat.cryptuon.com/)
+
+Docs: [docs.cryptuon.com/dgbit](https://docs.cryptuon.com/dgbit/) · Contact: [contact@cryptuon.com](mailto:contact@cryptuon.com)
 
 ---
 
