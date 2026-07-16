@@ -1,10 +1,10 @@
 <p align="center">
   <h1 align="center">dgbit</h1>
   <p align="center">
-    <strong>Professional Algorithmic Trading Framework for Bybit</strong>
+    <strong>Backtest-to-Live Algorithmic Trading Framework for Bybit</strong>
   </p>
   <p align="center">
-    Build, backtest, and deploy crypto trading strategies with confidence
+    Build, backtest, and execute crypto strategies — human-run, scheduled, or agent-operated
   </p>
 </p>
 
@@ -28,17 +28,25 @@
 
 ---
 
-## Why dgbit?
+## What dgbit is
 
-**dgbit** is a production-ready algorithmic trading framework designed for cryptocurrency traders who want to:
+**dgbit** is a backtest-to-live algorithmic trading framework for Bybit. It is a Python package and a small multi-service stack (FastAPI, an NNG service bus, and a Vue 3 dashboard) that lets you research a strategy against historical data, run it in simulation, and then execute it live — through one interface, with one exchange modelled precisely rather than abstracted.
 
-- **Backtest strategies** with historical data before risking real capital
-- **Execute automated trades** on Bybit spot markets with confidence
-- **Build custom strategies** using a pluggable, extensible architecture
-- **Monitor positions** through a modern web dashboard
-- **Deploy anywhere** with Docker support
+Use it to:
 
-Whether you're a quantitative trader developing new strategies or a developer building trading automation, dgbit provides the infrastructure you need.
+- **Backtest strategies** on historical Bybit OHLCV before risking real capital
+- **Execute automated trades** on Bybit spot with position tracking and risk controls
+- **Build custom strategies** on a pluggable base class — no config DSL to learn
+- **Monitor and drive** the system over a REST API, a WebSocket event stream, and a Vue 3 dashboard
+- **Deploy anywhere** with `pip install` or `docker-compose`
+
+Whether you're a quantitative trader developing new strategies, a developer building trading automation, or a team wiring an autonomous agent to a live venue, dgbit gives you the infrastructure — backtester, strategy interface, execution layer, and event bus — without the multi-exchange overhead.
+
+### Why this matters in 2026
+
+Trading infrastructure is moving from hand-run scripts toward systems that are **operated programmatically — increasingly by agents**. The 2026 wave of agent-driven trading needs the same primitives dgbit already exposes: a strategy that behaves identically in backtest and live, a REST surface for scheduling backtests and placing orders, and a real-time event stream (`job.*`, `trade.*`, `signal.generated`) an autonomous loop can subscribe and react to.
+
+dgbit is not an "AI trading bot" and makes no return claims. It is the honest layer underneath one: a framework whose API, WebSocket events, and plugin strategy model make it straightforward to put a human, a cron job, or an agent in the driver's seat — while the single-exchange scope keeps backtest and live behaviour in agreement. See [ROADMAP.md](ROADMAP.md) for where this is going and the cheapest path to running it in production.
 
 ## Key Features
 
@@ -233,6 +241,8 @@ ws.onmessage = (event) => {
 // Event types: job.created, job.completed, job.failed, 
 //              trade.entered, trade.exited, signal.generated
 ```
+
+The REST API and this event stream are what make dgbit **drivable by something other than a person**. A scheduler, a CI job, or an autonomous agent can POST a backtest, poll `/api/jobs/{uuid}` for the result, request a signal from `/api/strategies/{name}/signal`, place an order via `/api/execution/orders`, and subscribe to `job.*` / `trade.*` / `signal.generated` events to close the loop — the same surface a human uses from the dashboard. dgbit does not ship an agent; it ships the operable substrate one runs on.
 
 ## Configuration
 
